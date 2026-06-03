@@ -1,0 +1,166 @@
+# ~/.zshrc
+
+{{- $is_wsl := and (eq .chezmoi.os "linux") (.chezmoi.kernel.osrelease | lower | contains "microsoft") -}}
+{{- $nvim := "~/.local/nvim-extracted/usr/bin/nvim" -}}
+{{- if eq .chezmoi.os "darwin" -}}
+{{-   $nvim = "nvim" -}}
+{{- end -}}
+
+# --- 0. Initialisation Plateforme ---
+{{ if eq .chezmoi.os "darwin" -}}
+# Configuration macOS (Homebrew)
+if [[ -f "/opt/homebrew/bin/brew" ]]; then
+    eval "$(/opt/homebrew/bin/brew shellenv)"
+elif [[ -f "/usr/local/bin/brew" ]]; then
+    eval "$(/usr/local/bin/brew shellenv)"
+fi
+{{ end -}}
+
+{{ if $is_wsl -}}
+# Configuration spécifique WSL2
+export BROWSER="wslview"
+{{ end -}}
+
+# -- 1. Historique des commandes --------------------------------
+HISTFILE=~/.zsh_history        # Fichier où l'historique est sauvegardé
+HISTSIZE=10000                 # Nombre de commandes gardées en mémoire (session)
+SAVEHIST=10000                 # Nombre de commandes écrites sur disque
+setopt SHARE_HISTORY           # Partage l'historique entre tous les terminaux ouverts
+setopt HIST_IGNORE_DUPS        # N'enregistre pas une commande identique à la précédente
+setopt HIST_IGNORE_SPACE       # Ignore les commandes commençant par un espace (utile pour secrets)
+
+# -- 2. Options du shell ----------------------------------------
+setopt AUTO_CD                 # Taper juste un nom de dossier = cd dans ce dossier
+setopt CORRECT                 # Propose une correction si une commande est mal orthographiée
+setopt INTERACTIVE_COMMENTS    # Autorise les commentaires `#` en mode interactif
+
+# -- 3. Complétion automatique (Tab) ----------------------------
+autoload -Uz compinit && compinit              # Active le système de complétion Zsh
+zstyle ':completion:*' menu select             # Affiche un menu navigable avec les flèches
+zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}'   # Complétion insensible à la casse
+
+# -- 4. Prompt : affiche le dossier courant + branche git -------
+autoload -Uz vcs_info                          # Charge le module d'info "version control"
+precmd() { vcs_info }                          # Met à jour l'info git avant chaque prompt
+zstyle ':vcs_info:git:*' formats ' (%b)'       # Format : espace + (nom-de-branche)
+setopt PROMPT_SUBST                            # Autorise la substitution de variables dans le prompt
+# Prompt final : dossier en cyan + branche git en jaune + symbole %
+PROMPT='%F{cyan}%n%f %F{green}%~%f%F{yellow}${vcs_info_msg_0_}%f %# '
+
+# -- 5. Alias : raccourcis de commandes -------------------------
+alias e='exit'
+alias q='exit'
+alias c='clear'
+alias mk='mkdir -p'
+alias n='{{ $nvim }}'
+alias nvim='{{ $nvim }}'
+alias vim='{{ $nvim }}'
+alias vi='{{ $nvim }}'
+alias nf='n $(fzf)'
+alias nn='nnn'
+alias nnf='nnn $(find . -type d | fzf)'
+alias t='touch'
+alias y='yazi'
+alias yh='yazi ~'
+alias chx='chmod +x'
+alias szs='source ~/.zshrc'
+alias nzs='nvim ~/.zshrc'
+alias ntm='nvim ~/.config/tmux/tmux.conf'
+alias nnv='nvim ~/.config/nvim/init.lua'
+alias z='zoxide'
+
+# Alias spécifiques WSL2 / Windows
+{{ if $is_wsl -}}
+alias yc='yazi /mnt/c'
+alias yz='yazi /mnt/z'
+alias nah='nvim /mnt/z/data/portable-apps/script/ahk2/steekell.ahk'
+alias nal='nvim /mnt/c/Users/{{ .chezmoi.username }}/AppData/Roaming/alacritty/alacritty.toml'
+alias nwe='nvim /mnt/c/Users/{{ .chezmoi.username }}/.wezterm.lua'
+alias explorer="explorer.exe"
+{{ end -}}
+
+# Tmux
+alias tm='tmux'
+alias tml='tmux list-sessions'
+alias tma='tmux attach'
+alias tmt='tmux attach -t'
+alias tmn='tmux new-session -A -s'
+alias tmkt='tmux kill-session -t'
+alias tmks='tmux kill-session'
+alias tmko='tmux kill-session -a'
+alias tmka='tmux kill-server'
+
+# Eza (Remplacement de ls)
+alias ll='eza -lh --icons --git-ignore --group-directories-first'
+alias la='eza -lah --icons --git-ignore --group-directories-first'
+alias lt='eza -T -L 2 --icons'
+alias lta='eza -Ta -L 2 --icons'
+alias lr='eza -R --icons'
+alias lra='eza -Ra --icons'
+
+# Git
+alias gs='git status'
+alias gd='git diff'
+alias gc='git commit -m'
+alias gp='git push'
+alias ..='cd ..'
+alias ...='cd ../..'
+
+# IA
+# alias fb='freebuff'
+alias op='opencode'
+alias ge='gemini'
+alias gr='grok'
+alias co='codex'
+alias cl='claude'
+alias de='deepseek-tui'
+
+# -- 6. Éditeur par défaut --------------------------------------
+export EDITOR={{ $nvim }}
+export VISUAL=$EDITOR
+
+# -- 7. Fonctions & Outils --------------------------------------
+bindkey -e               # Keymap emacs dans le shell
+
+# Creer dossier et y entrer
+mkcd() {
+    mkdir -p "$1" && cd "$1"
+}
+
+# Afficher la taille d'un dossier
+dirsize() {
+    du -sh "${1:-.}" 2>/dev/null
+}
+
+# fzf : Key-bindings et complétion
+if command -v fzf >/dev/null; then
+  # Chemins standards Linux et macOS (Homebrew)
+  for f in /usr/share/fzf/key-bindings.zsh /usr/share/doc/fzf/examples/key-bindings.zsh /opt/homebrew/opt/fzf/shell/key-bindings.zsh; do
+    [[ -f $f ]] && source "$f" && break
+  done
+  for f in /usr/share/fzf/completion.zsh /usr/share/doc/fzf/examples/completion.zsh /opt/homebrew/opt/fzf/shell/completion.zsh; do
+    [[ -f $f ]] && source "$f" && break
+  done
+fi
+
+# Auto-start ssh-agent (Multi-plateforme)
+if [ -z "${SSH_AUTH_SOCK:-}" ] && command -v ssh-agent >/dev/null 2>&1; then
+  export SSH_AUTH_SOCK="{{ .chezmoi.homeDir }}/.ssh/agent.sock"
+  if [ ! -S "$SSH_AUTH_SOCK" ]; then
+    eval "$(ssh-agent -a "$SSH_AUTH_SOCK" -s)" >/dev/null 2>&1
+  fi
+  ssh-add -l >/dev/null 2>&1 || ssh-add "{{ .chezmoi.homeDir }}/.ssh/id_ed25519" 2>/dev/null || true
+fi
+
+# Zoxide
+if command -v zoxide >/dev/null; then
+  eval "$(zoxide init zsh)"
+fi
+
+# -- 8. PATH & Local --------------------------------------------
+export PATH="$HOME/scripts:$HOME/.local/bin:/opt/homebrew/opt/node@22/bin:$PATH"
+export LC_ALL=en_US.UTF-8
+
+# Fichiers optionnels
+[[ -f ~/.zshrc.ssh ]] && source ~/.zshrc.ssh
+[[ -f ~/.zshrc.local ]] && source ~/.zshrc.local
