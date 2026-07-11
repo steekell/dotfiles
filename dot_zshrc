@@ -1,0 +1,292 @@
+# ~/.zshrc
+
+## Sommaire
+## ==1. Environnement & PATH
+## ==2. Options zsh
+## ==3. Historique
+## ==4. Complétion
+## ==5. Keybindings
+## ==6. Prompt
+## ==7. Aliases
+## ==8. Fonctions
+## ==9. Plugins / sources externes
+
+## ==1. Environnement & PATH
+
+export EDITOR=nvim
+export VISUAL=nvim
+export BROWSER=brave-origin
+export LANG=fr_FR.UTF-8
+export LC_ALL=fr_FR.UTF-8
+
+path+=(
+  "$HOME/.local/bin"
+)
+export PATH
+
+## ==2. Options zsh
+
+setopt AUTO_CD              # taper un chemin suffit pour y aller
+setopt AUTO_PUSHD           # cd empile dans la pile de dirs
+setopt PUSHD_IGNORE_DUPS    # pas de doublons dans la pile
+setopt CORRECT              # correction de commandes
+setopt NO_BEEP              # silence
+setopt EXTENDED_GLOB        # globs avancés
+setopt GLOB_DOTS            # les globs matchent les fichiers cachés
+setopt INTERACTIVE_COMMENTS # autoriser # dans le shell interactif
+setopt PROMPT_SUBST         # évaluer $() dans le prompt à chaque affichage
+
+## ==3. Historique
+
+HISTFILE="$HOME/.zsh_history"
+HISTSIZE=10000
+SAVEHIST=10000
+
+setopt SHARE_HISTORY        # partage entre sessions
+setopt HIST_IGNORE_DUPS     # pas de lignes dupliquées consécutives
+setopt HIST_IGNORE_SPACE    # ignorer les lignes précédées d'un espace
+setopt HIST_VERIFY          # confirmer avant d'exécuter une expansion !
+setopt HIST_REDUCE_BLANKS   # supprimer les espaces superflus
+
+## ==4. Complétion
+
+autoload -Uz compinit && compinit
+
+zstyle ':completion:*' menu select
+zstyle ':completion:*' matcher-list 'm:{a-z}={A-Z}'
+zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
+zstyle ':completion:*:descriptions' format '%F{#89b4fa}── %d%f'
+zstyle ':completion:*' group-name ''
+
+## ==5. Keybindings
+
+bindkey -v                           # mode vi
+
+### Délai réduit pour la détection de la touche Escape
+KEYTIMEOUT=1
+
+### Bindings Ctrl conservés malgré le mode vi (kanata : lalt=lCtrl)
+bindkey '^R' history-incremental-search-backward
+bindkey '^A' beginning-of-line
+bindkey '^E' end-of-line
+bindkey '^K' kill-line
+bindkey '^U' backward-kill-line
+bindkey '^W' backward-kill-word
+bindkey '^P' up-line-or-history
+bindkey '^N' down-line-or-history
+
+## ==6. Prompt
+
+### Indicateur de mode vi dans le prompt (insert / normal)
+function _vi_mode_indicator {
+  case "$KEYMAP" in
+    vicmd) echo '%F{#f9e2af}[N]%f ';;
+    *)     echo '';;
+  esac
+}
+
+function zle-line-init zle-keymap-select {
+  zle reset-prompt
+}
+zle -N zle-line-init
+zle -N zle-keymap-select
+
+### Prompt : chemin · flèche (couleur selon code retour)
+PROMPT='%F{#89b4fa}%~%f $(_vi_mode_indicator)%(?,%F{#a6e3a1},%F{#f38ba8})❯%f '
+
+## ==7. Aliases
+
+### Gestionnaire de paquets
+##### Mettre à jour
+alias pup='sudo pacman -Syu'
+##### Installer
+alias pin='sudo pacman -S'
+##### Supprimer
+alias prm='sudo pacman -R'
+##### Supprimer + Dépendances
+alias prmr='sudo pacman -Rs'
+##### Nettoyer
+alias pcl='sudo pacman -Rns'
+
+#### Recherche et Informations
+##### Chercher (Dépôts)
+alias pss='sudo pacman -Ss'
+##### Chercher (Local)
+alias psl='sudo pacman -Qs'
+##### Infos (Dépôt)
+alias psi='sudo pacman -Si'
+##### Infos (Local)
+alias psil='sudo pacman -Qi'
+##### Lister les fichiers
+alias psli='sudo pacman -Ql'
+##### Trouver le propriétaire | pacman -Qo /chemin/fichier
+alias psch='sudo pacman -Qo'
+
+#### Maintenance et Astuces
+##### Supprimer les orphelins (paquets inutilisés)
+alias pcla='sudo pacman -Rns $(pacman -Qtdq)'
+##### Nettoyer le cache des paquets en gardant les versions actuelles
+alias pclc='sudo pacman -Sc'
+##### Nettoyer le cache des paquets en vidant tout le cache
+alias pclca='sudo pacman -Scc'
+
+### Navigation
+alias ..='cd ..'
+alias ...='cd ../..'
+alias ....='cd ../../..'
+alias cds='cd ~/steekell'
+alias cdc='cd ~/.config'
+alias cdcv='cd ~/.config/nvim'
+alias cdt='cd /tmp'
+alias cdp='cd /partage'
+alias cdd='cd /data'
+
+### Listing
+alias ls='eza --color=auto --group-directories-first'
+alias ll='eza -lh --color=auto --group-directories-first --git'
+alias la='eza -lAh --color=auto --group-directories-first --git'
+alias bat='bat --style=plain --paging=never'
+
+### Éditeur
+alias v='nvim'
+alias vi='nvim'
+alias vim='nvim'
+alias vf='nvim $(fzf)'
+
+alias vzs='nvim ~/.zshrc'
+alias vin='nvim /data/install-arch.md'
+alias vvi='nvim ~/.config/nvim/init.lua'
+
+### Codes
+alias c='./data/code/cli/calculatrice/taget/relese/calculatrice'
+
+
+
+### Divers
+alias x='startx'
+alias q='exit'
+alias l='clear'
+alias y='pwd | xclip -selection clipboard'
+alias p='cd "$(xclip -selection clipboard -o)"'
+alias sh='sudo shutdown -h now'
+alias re='reboot'
+alias rezs='source ~/.zshrc'
+alias rewm='bspc wm -r'
+alias rele='pkill -f bar.sh; bash ~/.config/lemonbar/bar.sh &'
+alias reka='sudo systemctl restart kanata'
+alias remo='sudo modprobe -r psmouse && sudo modprobe psmouse'
+alias mu='pactl set-sink-mute @DEFAULT_SINK@ toggle'
+alias rmtrash='trash-empty'
+alias mk='mkdir'
+
+alias o='omp --no-session'
+alias ol='omp --no-session --thinking=low'
+alias om='omp --no-session --thinking=medium'
+alias oh='omp --no-session --thinking=high'
+alias op='omp --no-session --print'
+alias opp='omp --no-session --print --thinking=minimal'
+alias opl='omp --no-session --print --thinking=low'
+alias opm='omp --no-session --print --thinking=medium'
+alias oph='omp --no-session --print --thinking=high'
+alias ocdh='omp --allow-home'
+
+alias pod='podman'
+alias pps='podman ps'
+alias ppsa='podman ps -a'
+alias psd='podman system df'
+alias psdv='podman system df -v'
+alias psp='podman start postgresql'
+alias pep='podman stop postgresql'
+alias plp='podman logs -f postgresql'
+alias ppco='podman exec -it postgresql psql -U steekell -d lifectl'
+alias psdf='podman system df -v'
+alias psh='podman start hermes'
+alias peh='podman stop hermes'
+alias plh='podman logs -f hermes'
+alias pshb='podman exec -it hermes bash'
+alias pshd='podman start hermes-dashboard'
+alias pehd='podman stop hermes-dashboard'
+alias plh='podman logs -f hermes-dashboard'
+
+alias ts='tailscale status'
+
+alias e='yazi'
+alias d='zoxide'
+alias z='zellij'
+
+alias t='wezterm &'
+alias r='rofi -show drun &'
+alias w='brave-origin &'
+
+### SSH + Zellij
+function zj() {
+  ssh -t "$1" "zellij attach --create main"
+}
+alias ssper='zj perkel'
+
+
+### Git
+alias gs='git status'
+alias ga='git add'
+alias gc='git commit'
+alias gp='git push'
+alias gl='git log --oneline --graph --decorate'
+
+## ==8. Fonctions
+
+### Créer un dossier et y entrer
+function mkcd {
+  mkdir -p "$1" && cd "$1"
+}
+
+### Afficher les processus consommateurs (top 10 cpu)
+function topcpu {
+  ps aux --sort=-%cpu | head -11
+}
+
+## ==9. Plugins / sources externes
+
+### fzf : raccourcis clavier (Ctrl+T, Ctrl+R, Alt+C)
+[[ -f /usr/share/fzf/key-bindings.zsh ]] && source /usr/share/fzf/key-bindings.zsh
+[[ -f /usr/share/fzf/completion.zsh   ]] && source /usr/share/fzf/completion.zsh
+
+### which fzf
+alias-widget() {
+     local selected
+     selected=$(
+       alias | sort | fzf \
+         --height 50% \
+         --reverse \
+         --border rounded \
+         --prompt ' alias> ' \
+         --preview 'echo {} | sed "s/.*=//"' \
+         --preview-window 'down:2:wrap'
+     )
+     [[ -z $selected ]] && { zle redisplay; return; }
+     LBUFFER+="${selected%%=*}"
+     zle redisplay
+   }
+
+   zle -N alias-widget
+   bindkey '^ ' alias-widget   # Ctrl+Space
+
+### scripts fzf : Ctrl+X → parcourir /data/scripts/python avec aperçu
+scripts-widget() {
+  local file base
+  base=/data/scripts/python
+  file=$(
+    find "$base" -type f | sed "s|$base/||" | sort | fzf \
+      --height 50% \
+      --reverse \
+      --border rounded \
+      --prompt ' python > ' \
+      --preview "bat --color=always --style=plain --paging=never $base/{}" \
+      --preview-window 'right:60%:wrap'
+  )
+  [[ -z $file ]] && { zle redisplay; return; }
+  LBUFFER+="python $base/$file"
+  zle redisplay
+}
+
+zle -N scripts-widget
+bindkey '^X' scripts-widget   # Ctrl+X
