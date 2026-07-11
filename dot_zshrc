@@ -96,6 +96,23 @@ PROMPT='%F{#89b4fa}%~%f $(_vi_mode_indicator)%(?,%F{#a6e3a1},%F{#f38ba8})❯%f '
 
 ## ==7. Aliases
 
+### Git
+alias gs='git status'
+alias ga='git add'
+alias gaa='git add .'
+alias gc='git commit'
+alias gca='git commit -am'
+alias gcaa='git commit -am "."'
+alias gp='git push'
+alias gl='git log --oneline --graph --decorate'
+
+### Chezmoi
+alias cmcd='chezmoi cd'
+alias cmad='chezmoi add'
+alias cme='chezmoi edit'
+alias cmd='chezmoi diff'
+alias cmap='chezmoi apply'
+
 ### Gestionnaire de paquets
 ##### Mettre à jour
 alias pup='sudo pacman -Syu'
@@ -210,7 +227,6 @@ alias plh='podman logs -f hermes-dashboard'
 
 alias ts='tailscale status'
 
-alias e='yazi'
 alias d='zoxide'
 alias z='zellij'
 
@@ -225,14 +241,17 @@ function zj() {
 alias ssper='zj perkel'
 
 
-### Git
-alias gs='git status'
-alias ga='git add'
-alias gc='git commit'
-alias gp='git push'
-alias gl='git log --oneline --graph --decorate'
 
 ## ==8. Fonctions
+
+### Yazi avec suivi du repertoire
+function e() {
+  local tmp=$(mktemp)
+  yazi --cwd-file="$tmp" "$@"
+  local cwd=$(cat "$tmp")
+  [ -n "$cwd" ] && [ "$cwd" != "$PWD" ] && cd "$cwd"
+  rm -f "$tmp"
+}
 
 ### Créer un dossier et y entrer
 function mkcd {
