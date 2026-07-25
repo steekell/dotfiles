@@ -1,0 +1,11 @@
+eval "$(/opt/homebrew/bin/brew shellenv)"
+
+# bun completions
+[ -s "/Users/steekell/.bun/_bun" ] && source "/Users/steekell/.bun/_bun"
+
+# bun
+export BUN_INSTALL="$HOME/.bun"
+export PATH="$BUN_INSTALL/bin:$PATH"
+
+# Hermes Agent — ensure ~/.local/bin is on PATH
+export PATH="$HOME/.local/bin:$PATH"
