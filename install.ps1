@@ -3,7 +3,7 @@
 #
 # Idempotent. Override: $env:DOTFILES_REPO, $env:DOTFILES_REF, $env:CHEZMOI_BIN_DIR
 #
-#   irm https://raw.githubusercontent.com/steekell/dotfiles/v0.1.0/install.ps1 | iex
+#   irm https://raw.githubusercontent.com/steekell/dotfiles/v0.1.1/install.ps1 | iex
 #   $env:DOTFILES_REF = 'main'; irm .../install.ps1 | iex
 
 Set-StrictMode -Version Latest

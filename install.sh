@@ -4,7 +4,7 @@
 #
 # Idempotent. Override: DOTFILES_REPO, DOTFILES_REF, CHEZMOI_BIN_DIR
 #
-#   curl -fsSL https://raw.githubusercontent.com/steekell/dotfiles/v0.1.0/install.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/steekell/dotfiles/v0.1.1/install.sh | sh
 #   DOTFILES_REF=main curl -fsSL .../install.sh | sh
 set -eu
 

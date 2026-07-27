@@ -36,7 +36,7 @@ Dotfiles gérés avec [chezmoi](https://www.chezmoi.io/), installables en une li
 ### Unix (Linux / macOS / BSD / WSL)
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/steekell/dotfiles/v0.1.0/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/steekell/dotfiles/v0.1.1/install.sh | sh
 ```
 
 Branche `main` (dev) :
@@ -48,7 +48,7 @@ DOTFILES_REF=main curl -fsSL https://raw.githubusercontent.com/steekell/dotfiles
 ### Windows (PowerShell)
 
 ```powershell
-irm https://raw.githubusercontent.com/steekell/dotfiles/v0.1.0/install.ps1 | iex
+irm https://raw.githubusercontent.com/steekell/dotfiles/v0.1.1/install.ps1 | iex
 ```
 
 Branche `main` :
