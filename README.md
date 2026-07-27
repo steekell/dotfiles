@@ -63,7 +63,7 @@ irm https://raw.githubusercontent.com/steekell/dotfiles/main/install.ps1 | iex
 | Variable | Défaut | Rôle |
 |---|---|---|
 | `DOTFILES_REPO` | `https://github.com/steekell/dotfiles.git` | URL du dépôt |
-| `DOTFILES_REF` | `v0.1.0` | Branche ou tag git (override pour `main` en dev) |
+| `DOTFILES_REF` | `v0.1.1` | Branche ou tag git (override pour `main` en dev) |
 | `CHEZMOI_BIN_DIR` | `~/.local/bin` (Unix) / `%USERPROFILE%\bin` (Windows) | Binaire chezmoi si absent |
 
 ## Uninstall

@@ -11,7 +11,7 @@ $ErrorActionPreference = 'Stop'
 
 $RepoUrl = if ($env:DOTFILES_REPO) { $env:DOTFILES_REPO } else { 'https://github.com/steekell/dotfiles.git' }
 # Pin to this release by default (override: $env:DOTFILES_REF = 'main').
-$DefaultRef = 'v0.1.0'
+$DefaultRef = 'v0.1.1'
 $Ref = if ($env:DOTFILES_REF) { $env:DOTFILES_REF } else { $DefaultRef }
 $BinDir = if ($env:CHEZMOI_BIN_DIR) { $env:CHEZMOI_BIN_DIR } else {
     Join-Path $env:USERPROFILE 'bin'
