@@ -1,4 +1,4 @@
-# ~/.gitconfig — managed by chezmoi
+# ~/.gitconfig — multi-platform (managed by chezmoi)
 
 [user]
 	name = Steekell
@@ -8,6 +8,9 @@
 [core]
 	editor = nvim
 	autocrlf = {{ if eq .chezmoi.os "windows" }}true{{ else }}input{{ end }}
+{{- if eq .chezmoi.os "windows" }}
+	longpaths = true
+{{- end }}
 [pull]
 	rebase = true
 [fetch]
@@ -15,6 +18,18 @@
 [push]
 	default = simple
 	autoSetupRemote = true
+[credential]
+{{- if eq .chezmoi.os "darwin" }}
+	helper = osxkeychain
+{{- else if eq .chezmoi.os "windows" }}
+	helper = manager
+{{- else }}
+	helper = cache --timeout=28800
+{{- end }}
+{{- if ne .chezmoi.os "windows" }}
+[url "ssh://git@github.com/"]
+	insteadOf = https://github.com/
+{{- end }}
 [alias]
 	st = status -sb
 	co = checkout

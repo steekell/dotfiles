@@ -1,5 +1,5 @@
 # run_onchange_before_10 — packages when this script changes.
-# Installs neovim via winget/choco/scoop when nvim is missing (idempotent).
+# Idempotent tools for nvim workflow: neovim, yazi, fzf, ripgrep.
 $ErrorActionPreference = 'Stop'
 
 function Write-PkgInfo([string]$Message) {
@@ -21,8 +21,9 @@ function Get-PackageManager {
     return 'unknown'
 }
 
-function Test-Nvim {
-    return [bool](Get-Command nvim -ErrorAction SilentlyContinue)
+function Refresh-Path {
+    $env:Path = [System.Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' +
+                [System.Environment]::GetEnvironmentVariable('Path', 'User')
 }
 
 function Add-Manifest([string]$PkgId) {
@@ -34,43 +35,51 @@ function Add-Manifest([string]$PkgId) {
     Add-Content -LiteralPath $manifest -Value $PkgId -Encoding utf8
 }
 
-function Ensure-Neovim {
-    if (Test-Nvim) {
-        $path = (Get-Command nvim).Source
-        Write-PkgInfo "neovim already installed: $path"
+function Test-Cmd([string]$Name) {
+    return [bool](Get-Command $Name -ErrorAction SilentlyContinue)
+}
+
+# Ensure-Cmd -Command nvim -WingetId Neovim.Neovim -ChocoName neovim -ScoopName neovim
+function Ensure-Cmd {
+    param(
+        [Parameter(Mandatory = $true)][string] $Command,
+        [Parameter(Mandatory = $true)][string] $WingetId,
+        [Parameter(Mandatory = $true)][string] $ChocoName,
+        [Parameter(Mandatory = $true)][string] $ScoopName
+    )
+
+    if (Test-Cmd $Command) {
+        Write-PkgInfo "$Command already installed: $((Get-Command $Command).Source)"
         return
     }
 
     $pm = Get-PackageManager
-    Write-PkgInfo "neovim not found — installing via $pm..."
+    Write-PkgInfo "$Command not found — installing via $pm..."
 
     switch ($pm) {
         'winget' {
-            & winget install --id Neovim.Neovim -e --accept-source-agreements --accept-package-agreements
-            Add-Manifest 'winget:Neovim.Neovim'
+            & winget install --id $WingetId -e --accept-source-agreements --accept-package-agreements
+            Add-Manifest "winget:$WingetId"
         }
         'choco' {
-            & choco install neovim -y
-            Add-Manifest 'choco:neovim'
+            & choco install $ChocoName -y
+            Add-Manifest "choco:$ChocoName"
         }
         'scoop' {
-            & scoop install neovim
-            Add-Manifest 'scoop:neovim'
+            & scoop install $ScoopName
+            Add-Manifest "scoop:$ScoopName"
         }
         default {
-            Write-PkgWarn 'no supported package manager (winget/choco/scoop) — install neovim manually'
+            Write-PkgWarn "no supported package manager — install $Command manually"
             return
         }
     }
 
-    # Refresh PATH for current session (common install locations).
-    $env:Path = [System.Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' +
-                [System.Environment]::GetEnvironmentVariable('Path', 'User')
-
-    if (Test-Nvim) {
-        Write-PkgInfo "neovim installed: $((Get-Command nvim).Source)"
+    Refresh-Path
+    if (Test-Cmd $Command) {
+        Write-PkgInfo "$Command installed: $((Get-Command $Command).Source)"
     } else {
-        Write-PkgWarn "install finished but 'nvim' not on PATH yet — open a new terminal"
+        Write-PkgWarn "$Command install finished but not on PATH yet — open a new terminal"
     }
 }
 
@@ -82,10 +91,19 @@ if (-not (Test-Path -LiteralPath $manifest)) {
     Set-Content -Path $manifest -Value "# packages installed by dotfiles scripts`n" -Encoding utf8
 }
 
-try {
-    Ensure-Neovim
-} catch {
-    Write-PkgWarn "Ensure-Neovim failed: $_"
+$specs = @(
+    @{ Command = 'nvim'; WingetId = 'Neovim.Neovim'; ChocoName = 'neovim'; ScoopName = 'neovim' }
+    @{ Command = 'yazi'; WingetId = 'sxyazi.yazi'; ChocoName = 'yazi'; ScoopName = 'yazi' }
+    @{ Command = 'fzf'; WingetId = 'junegunn.fzf'; ChocoName = 'fzf'; ScoopName = 'fzf' }
+    @{ Command = 'rg'; WingetId = 'BurntSushi.ripgrep.MSVC'; ChocoName = 'ripgrep'; ScoopName = 'ripgrep' }
+)
+
+foreach ($s in $specs) {
+    try {
+        Ensure-Cmd @s
+    } catch {
+        Write-PkgWarn "Ensure-Cmd $($s.Command) failed: $_"
+    }
 }
 
 Write-PkgInfo 'ok'

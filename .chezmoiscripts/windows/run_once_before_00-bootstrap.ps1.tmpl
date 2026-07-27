@@ -58,4 +58,15 @@ if (-not ($parts | Where-Object { $_ -eq $binDir })) {
     Write-BootInfo 'user PATH already contains bin dir'
 }
 
+# Neovim & XDG tools: single tree ~/.config (same as Unix). Avoid AppData/Local/nvim dual tree.
+$xdgConfig = Join-Path $homeDir '.config'
+$curXdg = [Environment]::GetEnvironmentVariable('XDG_CONFIG_HOME', 'User')
+if ($curXdg -ne $xdgConfig) {
+    [Environment]::SetEnvironmentVariable('XDG_CONFIG_HOME', $xdgConfig, 'User')
+    $env:XDG_CONFIG_HOME = $xdgConfig
+    Write-BootInfo "set User XDG_CONFIG_HOME=$xdgConfig"
+} else {
+    Write-BootInfo 'XDG_CONFIG_HOME already set for user'
+}
+
 Write-BootInfo 'ok'

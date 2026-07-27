@@ -1,27 +1,35 @@
-# ~/.zshrc — multi-platform (macOS, Linux/WSL, *BSD). No-op sections when tools missing.
+# ~/.zshrc — multi-platform (macOS, Linux/WSL, *BSD, Git Bash/MSYS).
+# Runtime detection: same logic everywhere after apply.
 
-{{ if eq .chezmoi.os "darwin" -}}
-# Homebrew (Apple Silicon then Intel)
-if [ -x /opt/homebrew/bin/brew ]; then
-  eval "$(/opt/homebrew/bin/brew shellenv)"
-elif [ -x /usr/local/bin/brew ]; then
-  eval "$(/usr/local/bin/brew shellenv)"
-fi
-{{ else if eq .chezmoi.os "linux" -}}
-# Homebrew on Linux (optional)
-if [ -x /home/linuxbrew/.linuxbrew/bin/brew ]; then
-  eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-elif [ -x "${HOME}/.linuxbrew/bin/brew" ]; then
-  eval "$("${HOME}/.linuxbrew/bin/brew" shellenv)"
-fi
-{{ end -}}
+# Homebrew if present (Apple Silicon, Intel, Linuxbrew)
+for _brew in \
+  /opt/homebrew/bin/brew \
+  /usr/local/bin/brew \
+  /home/linuxbrew/.linuxbrew/bin/brew \
+  "${HOME}/.linuxbrew/bin/brew"
+do
+  if [ -x "${_brew}" ]; then
+    eval "$("${_brew}" shellenv)"
+    break
+  fi
+done
+unset _brew
 
-# User binaries (chezmoi installer default, pipx, etc.)
-export PATH="${HOME}/.local/bin:${PATH}"
-{{ if eq .chezmoi.os "windows" -}}
-# Native Windows rarely uses this file; kept for Git Bash / MSYS.
-export PATH="${HOME}/bin:${PATH}"
-{{ end -}}
+# User binaries (chezmoi, pipx, rustup, etc.)
+case ":${PATH}:" in
+  *":${HOME}/.local/bin:"*) ;;
+  *) export PATH="${HOME}/.local/bin:${PATH}" ;;
+esac
+
+# Windows-style user bin (Git Bash / MSYS / Cygwin)
+case "$(uname -s 2>/dev/null)" in
+  MINGW* | MSYS* | CYGWIN*)
+    case ":${PATH}:" in
+      *":${HOME}/bin:"*) ;;
+      *) export PATH="${HOME}/bin:${PATH}" ;;
+    esac
+    ;;
+esac
 
 # bun (if installed)
 if [ -s "${HOME}/.bun/_bun" ]; then
@@ -30,8 +38,17 @@ if [ -s "${HOME}/.bun/_bun" ]; then
 fi
 if [ -d "${HOME}/.bun/bin" ]; then
   export BUN_INSTALL="${HOME}/.bun"
-  export PATH="${BUN_INSTALL}/bin:${PATH}"
+  case ":${PATH}:" in
+    *":${BUN_INSTALL}/bin:"*) ;;
+    *) export PATH="${BUN_INSTALL}/bin:${PATH}" ;;
+  esac
 fi
 
-# Hermes Agent / local tools
-# (PATH already includes ~/.local/bin)
+# Prefer nvim when available
+if command -v nvim >/dev/null 2>&1; then
+  export EDITOR="nvim"
+  export VISUAL="nvim"
+elif command -v vim >/dev/null 2>&1; then
+  export EDITOR="vim"
+  export VISUAL="vim"
+fi

@@ -15,3 +15,7 @@ Thumbs.db
 **/id_rsa
 **/id_ed25519
 **/*.pem
+
+# Agent-only docs (not part of the published dotfiles)
+**/AGENT.md
+**/RULES.md

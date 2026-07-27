@@ -1,33 +1,25 @@
 -- ~/.config/nvim/init.lua
--- Minimal starter — extend as needed.
+-- Leader : doit être défini avant tout require (les keymaps en dépendent)
+vim.g.mapleader      = ' '
+vim.g.maplocalleader = ' '
 
-vim.g.mapleader = " "
-vim.g.maplocalleader = " "
+-- Désactiver netrw avant le chargement des plugins (oil.nvim le remplace)
+vim.g.loaded_netrw       = 1
+vim.g.loaded_netrwPlugin = 1
 
-vim.opt.number = true
-vim.opt.relativenumber = true
-vim.opt.termguicolors = true
-vim.opt.expandtab = true
-vim.opt.shiftwidth = 2
-vim.opt.tabstop = 2
-vim.opt.smartindent = true
-vim.opt.ignorecase = true
-vim.opt.smartcase = true
-vim.opt.clipboard = "unnamedplus"
-vim.opt.undofile = true
-vim.opt.splitright = true
-vim.opt.splitbelow = true
+require("options")
+require("plugins")
+require("autocmds")
+require("keymaps")
 
--- Swap/backup under XDG state (not repo)
-local state = vim.fn.stdpath("state")
-vim.opt.directory = state .. "/swap//"
-vim.opt.undodir = state .. "/undo//"
-vim.opt.backupdir = state .. "/backup//"
-for _, d in ipairs({ "swap", "undo", "backup" }) do
-  vim.fn.mkdir(state .. "/" .. d, "p")
-end
-
--- Basic keymaps
-vim.keymap.set("n", "<leader>w", "<cmd>write<cr>", { desc = "Write" })
-vim.keymap.set("n", "<leader>q", "<cmd>quitall<cr>", { desc = "Quit" })
-vim.keymap.set("n", "<esc>", "<cmd>nohlsearch<cr>", { silent = true })
+-------------------------------------------------------------------------------
+-- AIDE-MÉMOIRE (référence)
+-- :checkhealth            → diagnostic complet de l'installation
+-- :TSUpdate               → met à jour les parsers treesitter
+-- :LspInfo                → état des serveurs LSP attachés au buffer
+-- :LspInstallMissing      → installe les binaires LSP manquants
+-- <leader>e               → yazi (explorateur flottant)
+-- <leader>o / -           → oil.nvim (panneau droit / vinegar)
+-- <leader>O               → oil.nvim (fenêtre flottante)
+-- <leader>ff / fg / fb    → fichiers / grep / buffers (fzf-lua)
+-- <leader>fh / fo / fr    → aide / récents / reprendre recherche (fzf-lua)

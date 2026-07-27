@@ -121,8 +121,15 @@ dotfiles/
 │       └── run_after_90-finalize.ps1.tmpl
 │
 ├── dot_config/
-│   └── nvim/
-│       └── init.lua
+│   └── nvim/                    # → ~/.config/nvim (tous OS ; Windows via XDG_CONFIG_HOME)
+│       ├── init.lua
+│       ├── lua/
+│       │   ├── options.lua
+│       │   ├── plugins.lua
+│       │   ├── autocmds.lua
+│       │   └── keymaps.lua
+│       ├── nvim-pack-lock.json
+│       └── keys.md
 │
 ├── dot_ssh/
 │   └── config.tmpl
@@ -131,6 +138,8 @@ dotfiles/
 ├── dot_zshrc.tmpl
 └── dot_vimrc
 ```
+
+Tous les dots sont **multiplateforme**. Neovim : un seul arbre XDG `~/.config/nvim` (pas de dual AppData) ; Windows pose `XDG_CONFIG_HOME` dans le bootstrap.
 
 `install*` / `uninstall*` / `README.md` sont dans `.chezmoiignore` (pas copiés dans `$HOME`).
 

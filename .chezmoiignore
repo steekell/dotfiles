@@ -9,6 +9,12 @@ uninstall.ps1
 .git/**
 .gitattributes
 
+# Agent-only docs (not applied into ~/.config/nvim)
+**/AGENT.md
+**/RULES.md
+dot_config/nvim/AGENT.md
+dot_config/nvim/RULES.md
+
 # Editor / OS noise
 .DS_Store
 *.swp

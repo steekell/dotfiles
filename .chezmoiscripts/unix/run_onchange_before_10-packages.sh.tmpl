@@ -1,6 +1,6 @@
 #!/bin/sh
 # run_onchange_before_10 — install/update packages when this script changes.
-# PACKAGE_MANAGER detected live; distro lists may use .system.distro.
+# Idempotent tools for nvim workflow: neovim, yazi, fzf, ripgrep.
 set -eu
 
 info() { printf 'packages(10): %s\n' "$*"; }
@@ -45,7 +45,6 @@ detect_package_manager() {
 	printf '%s\n' unknown
 }
 
-# Root helper for system package managers (no-op if already root).
 run_root() {
 	if [ "$(id -u)" -eq 0 ]; then
 		"$@"
@@ -71,61 +70,99 @@ record_pkg() {
 	printf '%s\n' "$pkg_id" >>"$manifest"
 }
 
-# --- Neovim (idempotent): skip if nvim already on PATH ---
-ensure_neovim() {
-	if command -v nvim >/dev/null 2>&1; then
-		info "neovim already installed: $(command -v nvim) ($(nvim --version 2>/dev/null | head -1))"
-		return 0
+# apt: update once per script run if we need to install something
+APT_UPDATED=0
+ensure_apt_updated() {
+	if [ "$APT_UPDATED" -eq 0 ]; then
+		run_root apt-get update -y
+		APT_UPDATED=1
 	fi
+}
 
-	info "neovim not found — installing via ${PACKAGE_MANAGER}..."
+# Install one package name via current PM. Args: manifest_suffix package_name [alt_name...]
+pm_install() {
+	suffix="$1"
+	shift
+	pkg="$1"
+	shift
 
 	case "$PACKAGE_MANAGER" in
 		brew)
-			brew install neovim
-			record_pkg "brew:neovim"
+			brew install "$pkg" || return 1
+			record_pkg "brew:${suffix}"
 			;;
 		apt)
-			run_root apt-get update -y
-			run_root apt-get install -y neovim
-			record_pkg "apt:neovim"
+			ensure_apt_updated
+			run_root apt-get install -y "$pkg" || {
+				# try alternates
+				for alt in "$@"; do
+					run_root apt-get install -y "$alt" && record_pkg "apt:${suffix}" && return 0
+				done
+				return 1
+			}
+			record_pkg "apt:${suffix}"
 			;;
 		dnf)
-			run_root dnf install -y neovim
-			record_pkg "dnf:neovim"
+			run_root dnf install -y "$pkg" || return 1
+			record_pkg "dnf:${suffix}"
 			;;
 		pacman)
-			run_root pacman -Sy --noconfirm neovim
-			record_pkg "pacman:neovim"
+			run_root pacman -Sy --noconfirm "$pkg" || return 1
+			record_pkg "pacman:${suffix}"
 			;;
 		zypper)
-			run_root zypper --non-interactive install neovim
-			record_pkg "zypper:neovim"
+			run_root zypper --non-interactive install "$pkg" || return 1
+			record_pkg "zypper:${suffix}"
 			;;
 		apk)
-			run_root apk add --no-cache neovim
-			record_pkg "apk:neovim"
+			run_root apk add --no-cache "$pkg" || return 1
+			record_pkg "apk:${suffix}"
 			;;
 		pkg)
-			# FreeBSD ports/pkg
-			run_root pkg install -y neovim || run_root pkg install -y editors/neovim
-			record_pkg "pkg:neovim"
+			run_root pkg install -y "$pkg" || {
+				for alt in "$@"; do
+					run_root pkg install -y "$alt" && record_pkg "pkg:${suffix}" && return 0
+				done
+				return 1
+			}
+			record_pkg "pkg:${suffix}"
 			;;
 		unknown)
-			warn "no supported package manager — install neovim manually"
+			warn "no supported package manager — install ${suffix} manually"
 			return 1
 			;;
 	esac
+}
 
-	if command -v nvim >/dev/null 2>&1; then
-		info "neovim installed: $(command -v nvim)"
+# ensure_cmd <command> <manifest_suffix> <pkg> [alt_pkgs...]
+ensure_cmd() {
+	cmd="$1"
+	suffix="$2"
+	shift 2
+
+	if command -v "$cmd" >/dev/null 2>&1; then
+		info "${cmd} already installed: $(command -v "$cmd")"
 		return 0
 	fi
 
-	warn "neovim install finished but 'nvim' still not on PATH"
+	info "${cmd} not found — installing via ${PACKAGE_MANAGER} ($*)..."
+	if ! pm_install "$suffix" "$@"; then
+		warn "failed to install ${cmd} (non-fatal)"
+		return 1
+	fi
+
+	if command -v "$cmd" >/dev/null 2>&1; then
+		info "${cmd} installed: $(command -v "$cmd")"
+		return 0
+	fi
+	warn "${cmd} install finished but not on PATH yet"
 	return 1
 }
 
-ensure_neovim || warn "ensure_neovim failed (non-fatal for other packages)"
+# Core editor + nvim companions (fzf-lua / yazi / grep)
+ensure_cmd nvim neovim neovim editors/neovim || true
+ensure_cmd yazi yazi yazi || true
+ensure_cmd fzf fzf fzf || true
+ensure_cmd rg ripgrep ripgrep || true
 
 info "ok"
