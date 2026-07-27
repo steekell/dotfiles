@@ -1,0 +1,37 @@
+# ~/.zshrc — multi-platform (macOS, Linux/WSL, *BSD). No-op sections when tools missing.
+
+{{ if eq .chezmoi.os "darwin" -}}
+# Homebrew (Apple Silicon then Intel)
+if [ -x /opt/homebrew/bin/brew ]; then
+  eval "$(/opt/homebrew/bin/brew shellenv)"
+elif [ -x /usr/local/bin/brew ]; then
+  eval "$(/usr/local/bin/brew shellenv)"
+fi
+{{ else if eq .chezmoi.os "linux" -}}
+# Homebrew on Linux (optional)
+if [ -x /home/linuxbrew/.linuxbrew/bin/brew ]; then
+  eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+elif [ -x "${HOME}/.linuxbrew/bin/brew" ]; then
+  eval "$("${HOME}/.linuxbrew/bin/brew" shellenv)"
+fi
+{{ end -}}
+
+# User binaries (chezmoi installer default, pipx, etc.)
+export PATH="${HOME}/.local/bin:${PATH}"
+{{ if eq .chezmoi.os "windows" -}}
+# Native Windows rarely uses this file; kept for Git Bash / MSYS.
+export PATH="${HOME}/bin:${PATH}"
+{{ end -}}
+
+# bun (if installed)
+if [ -s "${HOME}/.bun/_bun" ]; then
+  # shellcheck disable=SC1091
+  . "${HOME}/.bun/_bun"
+fi
+if [ -d "${HOME}/.bun/bin" ]; then
+  export BUN_INSTALL="${HOME}/.bun"
+  export PATH="${BUN_INSTALL}/bin:${PATH}"
+fi
+
+# Hermes Agent / local tools
+# (PATH already includes ~/.local/bin)

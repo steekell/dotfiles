@@ -1,0 +1,35 @@
+# Chezmoi config template — rendered on `chezmoi init`.
+# Non-interactive safe (curl|bash): defaults, optional prompts only on TTY.
+# Override later: chezmoi edit-config
+# Re-run init to refresh [data.system] after OS/distro change: chezmoi init
+# https://www.chezmoi.io/reference/special-files/chezmoi-format-tmpl/
+
+{{- $name := "Steeve Keller" }}
+{{- $email := "steekell@protonmail.com" }}
+{{- if stdinIsATTY }}
+{{-   $name = promptStringOnce . "name" "Full name" $name }}
+{{-   $email = promptStringOnce . "email" "Email address" $email }}
+{{- end }}
+
+{{- /* Stable machine facts for all templates/scripts: .system.* */}}
+{{- $distro := "" }}
+{{- $distroLike := "" }}
+{{- if eq .chezmoi.os "linux" }}
+{{-   if stat "/etc/os-release" }}
+{{-     $distro = trim (output "sh" "-c" ". /etc/os-release && printf %s \"$ID\"") }}
+{{-     $distroLike = trim (output "sh" "-c" ". /etc/os-release && printf %s \"${ID_LIKE:-}\"") }}
+{{-   end }}
+{{- end }}
+
+[data]
+    name = {{ $name | quote }}
+    email = {{ $email | quote }}
+
+[data.system]
+    os = {{ .chezmoi.os | quote }}
+    arch = {{ .chezmoi.arch | quote }}
+    distro = {{ $distro | quote }}
+    distroLike = {{ $distroLike | quote }}
+
+[edit]
+    command = "nvim"

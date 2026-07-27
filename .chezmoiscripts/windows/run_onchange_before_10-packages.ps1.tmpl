@@ -1,0 +1,91 @@
+# run_onchange_before_10 — packages when this script changes.
+# Installs neovim via winget/choco/scoop when nvim is missing (idempotent).
+$ErrorActionPreference = 'Stop'
+
+function Write-PkgInfo([string]$Message) {
+    Write-Host "packages(10): $Message"
+}
+function Write-PkgWarn([string]$Message) {
+    Write-Warning "packages(10): $Message"
+}
+
+$os = '{{ if and (hasKey . "system") (hasKey .system "os") }}{{ .system.os }}{{ else }}{{ .chezmoi.os }}{{ end }}'
+$homeDir = '{{ .chezmoi.homeDir }}'
+$stateDir = Join-Path $homeDir '.config\dotfiles'
+$manifest = Join-Path $stateDir 'packages.manifest'
+
+function Get-PackageManager {
+    if (Get-Command winget -ErrorAction SilentlyContinue) { return 'winget' }
+    if (Get-Command choco -ErrorAction SilentlyContinue) { return 'choco' }
+    if (Get-Command scoop -ErrorAction SilentlyContinue) { return 'scoop' }
+    return 'unknown'
+}
+
+function Test-Nvim {
+    return [bool](Get-Command nvim -ErrorAction SilentlyContinue)
+}
+
+function Add-Manifest([string]$PkgId) {
+    if (-not (Test-Path -LiteralPath $manifest)) {
+        Set-Content -Path $manifest -Value "# packages installed by dotfiles scripts`n" -Encoding utf8
+    }
+    $existing = @(Get-Content -LiteralPath $manifest -ErrorAction SilentlyContinue)
+    if ($existing -contains $PkgId) { return }
+    Add-Content -LiteralPath $manifest -Value $PkgId -Encoding utf8
+}
+
+function Ensure-Neovim {
+    if (Test-Nvim) {
+        $path = (Get-Command nvim).Source
+        Write-PkgInfo "neovim already installed: $path"
+        return
+    }
+
+    $pm = Get-PackageManager
+    Write-PkgInfo "neovim not found — installing via $pm..."
+
+    switch ($pm) {
+        'winget' {
+            & winget install --id Neovim.Neovim -e --accept-source-agreements --accept-package-agreements
+            Add-Manifest 'winget:Neovim.Neovim'
+        }
+        'choco' {
+            & choco install neovim -y
+            Add-Manifest 'choco:neovim'
+        }
+        'scoop' {
+            & scoop install neovim
+            Add-Manifest 'scoop:neovim'
+        }
+        default {
+            Write-PkgWarn 'no supported package manager (winget/choco/scoop) — install neovim manually'
+            return
+        }
+    }
+
+    # Refresh PATH for current session (common install locations).
+    $env:Path = [System.Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' +
+                [System.Environment]::GetEnvironmentVariable('Path', 'User')
+
+    if (Test-Nvim) {
+        Write-PkgInfo "neovim installed: $((Get-Command nvim).Source)"
+    } else {
+        Write-PkgWarn "install finished but 'nvim' not on PATH yet — open a new terminal"
+    }
+}
+
+$pm = Get-PackageManager
+Write-PkgInfo "os=$os pm=$pm"
+
+New-Item -ItemType Directory -Force -Path $stateDir | Out-Null
+if (-not (Test-Path -LiteralPath $manifest)) {
+    Set-Content -Path $manifest -Value "# packages installed by dotfiles scripts`n" -Encoding utf8
+}
+
+try {
+    Ensure-Neovim
+} catch {
+    Write-PkgWarn "Ensure-Neovim failed: $_"
+}
+
+Write-PkgInfo 'ok'

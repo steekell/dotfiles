@@ -1,0 +1,14 @@
+# run_once_before_20 — SSH directory hygiene (no private keys in the repo).
+$ErrorActionPreference = 'Stop'
+
+function Write-SshInfo([string]$Message) {
+    Write-Host "ssh(20): $Message"
+}
+
+$homeDir = '{{ .chezmoi.homeDir }}'
+$sshDir = Join-Path $homeDir '.ssh'
+
+New-Item -ItemType Directory -Force -Path $sshDir | Out-Null
+
+# ACLs on Windows differ; still ensure directory exists for config.tmpl.
+Write-SshInfo "ok ($sshDir)"

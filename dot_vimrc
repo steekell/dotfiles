@@ -1,0 +1,12 @@
+" ~/.vimrc — lightweight fallback when nvim is unavailable
+set nocompatible
+set number
+set expandtab
+set shiftwidth=2
+set tabstop=2
+set ignorecase
+set smartcase
+set directory^=$HOME/.vim/swap//
+if !isdirectory(expand('$HOME/.vim/swap'))
+  call mkdir(expand('$HOME/.vim/swap'), 'p', 0700)
+endif

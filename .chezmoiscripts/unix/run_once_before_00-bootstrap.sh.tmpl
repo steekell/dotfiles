@@ -1,0 +1,84 @@
+#!/bin/sh
+# run_once_before_00 — dirs, state, package-manager probe.
+# Machine config (not install.sh). Uses .system.* from chezmoi config data.
+set -eu
+
+info() { printf 'bootstrap(00): %s\n' "$*"; }
+
+home="{{ .chezmoi.homeDir }}"
+hostname="{{ .chezmoi.hostname }}"
+
+# Prefer stable data.system (set at chezmoi init); fall back to live chezmoi vars.
+os="{{ if and (hasKey . "system") (hasKey .system "os") }}{{ .system.os }}{{ else }}{{ .chezmoi.os }}{{ end }}"
+arch="{{ if and (hasKey . "system") (hasKey .system "arch") }}{{ .system.arch }}{{ else }}{{ .chezmoi.arch }}{{ end }}"
+distro="{{ if and (hasKey . "system") (hasKey .system "distro") }}{{ .system.distro }}{{ end }}"
+distro_like="{{ if and (hasKey . "system") (hasKey .system "distroLike") }}{{ .system.distroLike }}{{ end }}"
+
+bin_dir="${home}/.local/bin"
+cfg_dir="${home}/.config"
+share_dir="${home}/.local/share"
+state_dir="${cfg_dir}/dotfiles"
+
+# Operational (live) — not stored in data.system on purpose.
+detect_package_manager() {
+	if command -v brew >/dev/null 2>&1; then
+		# Prefer brew when present (macOS / linuxbrew) for user-level tooling.
+		printf '%s\n' brew
+		return 0
+	fi
+	if command -v apt-get >/dev/null 2>&1; then
+		printf '%s\n' apt
+		return 0
+	fi
+	if command -v dnf >/dev/null 2>&1; then
+		printf '%s\n' dnf
+		return 0
+	fi
+	if command -v pacman >/dev/null 2>&1; then
+		printf '%s\n' pacman
+		return 0
+	fi
+	if command -v zypper >/dev/null 2>&1; then
+		printf '%s\n' zypper
+		return 0
+	fi
+	if command -v apk >/dev/null 2>&1; then
+		printf '%s\n' apk
+		return 0
+	fi
+	if command -v pkg >/dev/null 2>&1; then
+		# FreeBSD / related
+		printf '%s\n' pkg
+		return 0
+	fi
+	printf '%s\n' unknown
+}
+
+PACKAGE_MANAGER="$(detect_package_manager)"
+
+info "os=${os} arch=${arch} distro=${distro:-?} like=${distro_like:-?} pm=${PACKAGE_MANAGER} host=${hostname}"
+
+info "ensuring standard directories"
+mkdir -p "$bin_dir" "$cfg_dir" "$share_dir" "$state_dir"
+
+{
+	printf 'os=%s\n' "$os"
+	printf 'arch=%s\n' "$arch"
+	printf 'distro=%s\n' "$distro"
+	printf 'distro_like=%s\n' "$distro_like"
+	printf 'package_manager=%s\n' "$PACKAGE_MANAGER"
+	printf 'hostname=%s\n' "$hostname"
+	printf 'updated_at=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date)"
+} >"${state_dir}/install-state"
+
+manifest="${state_dir}/packages.manifest"
+if [ ! -f "$manifest" ]; then
+	printf '# packages installed by dotfiles scripts (none yet)\n' >"$manifest"
+fi
+
+case ":${PATH}:" in
+	*":${bin_dir}:"*) ;;
+	*) info "note: add ${bin_dir} to PATH if tools are missing in new shells" ;;
+esac
+
+info "ok"

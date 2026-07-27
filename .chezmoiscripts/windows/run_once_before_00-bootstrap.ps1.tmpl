@@ -1,0 +1,61 @@
+# run_once_before_00 — Windows machine bootstrap (dirs, state, PATH).
+# Machine config (not install.ps1). Uses .system.* when present.
+$ErrorActionPreference = 'Stop'
+
+function Write-BootInfo([string]$Message) {
+    Write-Host "bootstrap(00): $Message"
+}
+
+$homeDir = '{{ .chezmoi.homeDir }}'
+$hostname = '{{ .chezmoi.hostname }}'
+$os = '{{ if and (hasKey . "system") (hasKey .system "os") }}{{ .system.os }}{{ else }}{{ .chezmoi.os }}{{ end }}'
+$arch = '{{ if and (hasKey . "system") (hasKey .system "arch") }}{{ .system.arch }}{{ else }}{{ .chezmoi.arch }}{{ end }}'
+$distro = '{{ if and (hasKey . "system") (hasKey .system "distro") }}{{ .system.distro }}{{ end }}'
+
+$binDir = Join-Path $homeDir 'bin'
+$cfgDir = Join-Path $homeDir '.config'
+$shareDir = Join-Path $homeDir '.local\share'
+$stateDir = Join-Path $cfgDir 'dotfiles'
+
+function Get-PackageManager {
+    if (Get-Command winget -ErrorAction SilentlyContinue) { return 'winget' }
+    if (Get-Command choco -ErrorAction SilentlyContinue) { return 'choco' }
+    if (Get-Command scoop -ErrorAction SilentlyContinue) { return 'scoop' }
+    return 'unknown'
+}
+
+$pm = Get-PackageManager
+Write-BootInfo "os=$os arch=$arch distro=$distro pm=$pm host=$hostname"
+
+Write-BootInfo 'ensuring standard directories'
+New-Item -ItemType Directory -Force -Path $binDir | Out-Null
+New-Item -ItemType Directory -Force -Path $cfgDir | Out-Null
+New-Item -ItemType Directory -Force -Path $shareDir | Out-Null
+New-Item -ItemType Directory -Force -Path $stateDir | Out-Null
+
+$stamp = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+@"
+os=$os
+arch=$arch
+distro=$distro
+package_manager=$pm
+hostname=$hostname
+updated_at=$stamp
+"@ | Set-Content -Path (Join-Path $stateDir 'install-state') -Encoding utf8
+
+$manifest = Join-Path $stateDir 'packages.manifest'
+if (-not (Test-Path -LiteralPath $manifest)) {
+    Set-Content -Path $manifest -Value "# packages installed by dotfiles scripts (none yet)`n" -Encoding utf8
+}
+
+$userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+if (-not $userPath) { $userPath = '' }
+$parts = $userPath -split ';' | Where-Object { $_ -and $_.Trim() -ne '' }
+if (-not ($parts | Where-Object { $_ -eq $binDir })) {
+    [Environment]::SetEnvironmentVariable('Path', "$binDir;$userPath", 'User')
+    Write-BootInfo "added $binDir to user PATH"
+} else {
+    Write-BootInfo 'user PATH already contains bin dir'
+}
+
+Write-BootInfo 'ok'

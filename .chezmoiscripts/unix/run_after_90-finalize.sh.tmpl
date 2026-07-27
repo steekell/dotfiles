@@ -1,0 +1,26 @@
+#!/bin/sh
+# run_after_90 — every apply: light verification / hints (idempotent).
+set -eu
+
+info() { printf 'finalize(90): %s\n' "$*"; }
+
+home="{{ .chezmoi.homeDir }}"
+os="{{ if and (hasKey . "system") (hasKey .system "os") }}{{ .system.os }}{{ else }}{{ .chezmoi.os }}{{ end }}"
+
+info "apply finished (os=${os})"
+
+# Non-fatal checks
+missing=""
+for cmd in git ssh; do
+	command -v "$cmd" >/dev/null 2>&1 || missing="${missing} ${cmd}"
+done
+if [ -n "$missing" ]; then
+	info "optional tools not on PATH:${missing}"
+fi
+
+if [ -d "${home}/.ssh" ]; then
+	mode=$(ls -ld "${home}/.ssh" | awk '{print $1}')
+	info "ssh dir ${home}/.ssh (${mode})"
+fi
+
+info "ok"

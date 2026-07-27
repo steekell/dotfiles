@@ -1,0 +1,17 @@
+# Local / OS
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# Editor
+.idea/
+.vscode/
+*.code-workspace
+
+# Secrets / local overrides (never commit)
+.chezmoi.toml.local
+*.local.toml
+**/id_rsa
+**/id_ed25519
+**/*.pem

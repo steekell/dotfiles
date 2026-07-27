@@ -1,0 +1,10 @@
+# run_after_90 — every apply: light verification / hints.
+$ErrorActionPreference = 'Stop'
+
+function Write-FinInfo([string]$Message) {
+    Write-Host "finalize(90): $Message"
+}
+
+$os = '{{ if and (hasKey . "system") (hasKey .system "os") }}{{ .system.os }}{{ else }}{{ .chezmoi.os }}{{ end }}'
+Write-FinInfo "apply finished (os=$os)"
+Write-FinInfo 'ok'

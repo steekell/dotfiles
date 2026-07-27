@@ -1,0 +1,34 @@
+# Repo / bootstrap files — never apply into $HOME
+README.md
+LICENSE
+install.sh
+install.ps1
+uninstall.sh
+uninstall.ps1
+.gitignore
+.git/**
+.gitattributes
+
+# Editor / OS noise
+.DS_Store
+*.swp
+*~
+
+# Never manage secrets / machine-local SSH material from the source tree
+**/id_rsa
+**/id_rsa.pub
+**/id_ed25519
+**/id_ed25519.pub
+**/id_ecdsa
+**/id_ecdsa.pub
+**/*.pem
+**/known_hosts
+**/known_hosts.old
+**/authorized_keys
+
+# OS-specific bootstrap scripts
+{{ if eq .chezmoi.os "windows" -}}
+.chezmoiscripts/unix/**
+{{ else -}}
+.chezmoiscripts/windows/**
+{{ end -}}

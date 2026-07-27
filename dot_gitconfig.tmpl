@@ -1,0 +1,22 @@
+# ~/.gitconfig — managed by chezmoi
+
+[user]
+	name = Steekell
+	email = {{ if and (hasKey . "email") .email }}{{ .email }}{{ else }}steekell@protonmail.com{{ end }}
+[init]
+	defaultBranch = main
+[core]
+	editor = nvim
+	autocrlf = {{ if eq .chezmoi.os "windows" }}true{{ else }}input{{ end }}
+[pull]
+	rebase = true
+[fetch]
+	prune = true
+[push]
+	default = simple
+	autoSetupRemote = true
+[alias]
+	st = status -sb
+	co = checkout
+	br = branch
+	lg = log --oneline --graph --decorate -20

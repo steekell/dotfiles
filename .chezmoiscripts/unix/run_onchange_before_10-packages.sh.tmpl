@@ -1,0 +1,131 @@
+#!/bin/sh
+# run_onchange_before_10 — install/update packages when this script changes.
+# PACKAGE_MANAGER detected live; distro lists may use .system.distro.
+set -eu
+
+info() { printf 'packages(10): %s\n' "$*"; }
+warn() { printf 'packages(10): warning: %s\n' "$*" >&2; }
+
+os="{{ if and (hasKey . "system") (hasKey .system "os") }}{{ .system.os }}{{ else }}{{ .chezmoi.os }}{{ end }}"
+distro="{{ if and (hasKey . "system") (hasKey .system "distro") }}{{ .system.distro }}{{ end }}"
+distro_like="{{ if and (hasKey . "system") (hasKey .system "distroLike") }}{{ .system.distroLike }}{{ end }}"
+home="{{ .chezmoi.homeDir }}"
+state_dir="${home}/.config/dotfiles"
+manifest="${state_dir}/packages.manifest"
+
+detect_package_manager() {
+	if command -v brew >/dev/null 2>&1; then
+		printf '%s\n' brew
+		return 0
+	fi
+	if command -v apt-get >/dev/null 2>&1; then
+		printf '%s\n' apt
+		return 0
+	fi
+	if command -v dnf >/dev/null 2>&1; then
+		printf '%s\n' dnf
+		return 0
+	fi
+	if command -v pacman >/dev/null 2>&1; then
+		printf '%s\n' pacman
+		return 0
+	fi
+	if command -v zypper >/dev/null 2>&1; then
+		printf '%s\n' zypper
+		return 0
+	fi
+	if command -v apk >/dev/null 2>&1; then
+		printf '%s\n' apk
+		return 0
+	fi
+	if command -v pkg >/dev/null 2>&1; then
+		printf '%s\n' pkg
+		return 0
+	fi
+	printf '%s\n' unknown
+}
+
+# Root helper for system package managers (no-op if already root).
+run_root() {
+	if [ "$(id -u)" -eq 0 ]; then
+		"$@"
+	elif command -v sudo >/dev/null 2>&1; then
+		sudo "$@"
+	else
+		warn "need root for: $*"
+		return 1
+	fi
+}
+
+PACKAGE_MANAGER="$(detect_package_manager)"
+info "os=${os} distro=${distro:-?} like=${distro_like:-?} pm=${PACKAGE_MANAGER}"
+
+mkdir -p "$state_dir"
+if [ ! -f "$manifest" ]; then
+	printf '# packages installed by dotfiles scripts\n' >"$manifest"
+fi
+
+record_pkg() {
+	pkg_id="$1"
+	grep -qxF "$pkg_id" "$manifest" 2>/dev/null && return 0
+	printf '%s\n' "$pkg_id" >>"$manifest"
+}
+
+# --- Neovim (idempotent): skip if nvim already on PATH ---
+ensure_neovim() {
+	if command -v nvim >/dev/null 2>&1; then
+		info "neovim already installed: $(command -v nvim) ($(nvim --version 2>/dev/null | head -1))"
+		return 0
+	fi
+
+	info "neovim not found — installing via ${PACKAGE_MANAGER}..."
+
+	case "$PACKAGE_MANAGER" in
+		brew)
+			brew install neovim
+			record_pkg "brew:neovim"
+			;;
+		apt)
+			run_root apt-get update -y
+			run_root apt-get install -y neovim
+			record_pkg "apt:neovim"
+			;;
+		dnf)
+			run_root dnf install -y neovim
+			record_pkg "dnf:neovim"
+			;;
+		pacman)
+			run_root pacman -Sy --noconfirm neovim
+			record_pkg "pacman:neovim"
+			;;
+		zypper)
+			run_root zypper --non-interactive install neovim
+			record_pkg "zypper:neovim"
+			;;
+		apk)
+			run_root apk add --no-cache neovim
+			record_pkg "apk:neovim"
+			;;
+		pkg)
+			# FreeBSD ports/pkg
+			run_root pkg install -y neovim || run_root pkg install -y editors/neovim
+			record_pkg "pkg:neovim"
+			;;
+		unknown)
+			warn "no supported package manager — install neovim manually"
+			return 1
+			;;
+	esac
+
+	if command -v nvim >/dev/null 2>&1; then
+		info "neovim installed: $(command -v nvim)"
+		return 0
+	fi
+
+	warn "neovim install finished but 'nvim' still not on PATH"
+	return 1
+}
+
+ensure_neovim || warn "ensure_neovim failed (non-fatal for other packages)"
+
+info "ok"

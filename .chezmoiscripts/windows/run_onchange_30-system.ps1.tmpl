@@ -1,0 +1,13 @@
+# run_onchange_30 — Windows system tweaks when this script changes.
+$ErrorActionPreference = 'Stop'
+
+function Write-SysInfo([string]$Message) {
+    Write-Host "system(30): $Message"
+}
+
+$os = '{{ if and (hasKey . "system") (hasKey .system "os") }}{{ .system.os }}{{ else }}{{ .chezmoi.os }}{{ end }}'
+$arch = '{{ if and (hasKey . "system") (hasKey .system "arch") }}{{ .system.arch }}{{ else }}{{ .chezmoi.arch }}{{ end }}'
+
+Write-SysInfo "os=$os arch=$arch"
+Write-SysInfo 'no system tweaks configured yet'
+Write-SysInfo 'ok'
