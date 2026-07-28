@@ -1,0 +1,79 @@
+;; kanata.kbd — rendered by chezmoi ({{ .chezmoi.os }})
+;;
+;; Noms kanata :
+;;   lctl/rctl = Control
+;;   lalt/ralt = Alt (Win/Linux) · Option (macOS)
+;;   lmet/rmet = Super/Win (Win/Linux) · Command (macOS)
+;;
+;; macOS — rangée bas gauche physique (G→D) : Control · Option · Command
+
+(defcfg
+  process-unmapped-keys yes
+  concurrent-tap-hold yes
+  override-release-on-activation yes
+)
+
+(defsrc
+  caps esc tab
+  lctl lalt lmet
+  rmet ralt rctl
+  ;
+)
+
+;; Inversion ; / : (US QWERTY)
+(defoverrides
+  (;) (lsft ;)
+  (lsft ;) (;)
+  (rsft ;) (;)
+  (lsft rsft ;) (;)
+)
+
+{{- if eq .chezmoi.os "darwin" }}
+
+;; ─── macOS ───────────────────────────────────────────────────────────
+;; Caps     tap Esc · hold Option
+;; Esc      Esc
+;; Tab      tap Tab · hold Shift+Command
+;; Control  Hyper (⌘⌥⌃⇧)
+;; Option   Command
+;; Command  Control
+;; Droite   Command→Control · Option→Command · Control→Control
+
+(defalias
+  capsesc (tap-hold 200 200 esc lalt)
+  tabsc   (tap-hold 200 200 tab (multi lsft lmet))
+  hyper   (multi lmet lalt lctl lsft)
+)
+
+(deflayer base
+  @capsesc esc    @tabsc
+  @hyper   lmet   lctl
+  rctl     rmet   rctl
+  ;
+)
+
+{{- else }}
+
+;; ─── Linux / Windows — config de base ────────────────────────────────
+;; Caps     tap Esc · hold Alt
+;; Esc      Hyper sans Shift (Meta+Alt+Ctrl)
+;; Tab      tap Tab · hold Ctrl+Shift
+;; Ctrl     Hyper
+;; Alt      Ctrl
+;; Meta     Meta
+
+(defalias
+  caps-alt  (tap-hold 200 200 esc lalt)
+  tab-cs    (tap-hold 200 200 tab (multi lctl lsft))
+  esc-hyper (multi lmet lalt lctl)
+  hyper     (multi lmet lalt lctl lsft)
+)
+
+(deflayer base
+  @caps-alt @esc-hyper @tab-cs
+  @hyper    lctl       lmet
+  rmet      ralt       rctl
+  ;
+)
+
+{{- end }}

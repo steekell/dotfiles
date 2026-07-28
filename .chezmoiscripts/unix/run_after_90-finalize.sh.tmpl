@@ -23,4 +23,33 @@ if [ -d "${home}/.ssh" ]; then
 	info "ssh dir ${home}/.ssh (${mode})"
 fi
 
+# Kanata: config managed; binary via 10-packages; service needs root (hint only).
+if [ -f "${home}/.config/kanata/kanata.kbd" ]; then
+	if command -v kanata >/dev/null 2>&1; then
+		info "kanata config: ${home}/.config/kanata/kanata.kbd"
+		if [ "$os" = "darwin" ] && command -v brew >/dev/null 2>&1; then
+			if brew services list 2>/dev/null | grep -qE '^kanata[[:space:]]+started'; then
+				info "kanata brew service: started"
+			else
+				info "hint: sudo brew services start kanata  # Input Monitoring + root"
+			fi
+		fi
+	else
+		info "hint: kanata config present but binary missing (re-run 10-packages)"
+	fi
+fi
+
+# Terminal stack configs (binaries via 10-packages)
+for pair in "wezterm:${home}/.config/wezterm/wezterm.lua" "zellij:${home}/.config/zellij/config.kdl" "herdr:${home}/.config/herdr/config.toml"; do
+	cmd="${pair%%:*}"
+	cfg="${pair#*:}"
+	if [ -f "$cfg" ]; then
+		if command -v "$cmd" >/dev/null 2>&1; then
+			info "${cmd} config: ${cfg}"
+		else
+			info "hint: ${cmd} config present but binary missing (re-run 10-packages)"
+		fi
+	fi
+done
+
 info "ok"

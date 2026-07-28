@@ -1,6 +1,6 @@
 #!/bin/sh
 # run_onchange_before_10 — install/update packages when this script changes.
-# Idempotent tools for nvim workflow: neovim, yazi, fzf, ripgrep.
+# Idempotent host CLIs: nvim workflow + terminal stack (wezterm, zellij, herdr, nerd font).
 set -eu
 
 info() { printf 'packages(10): %s\n' "$*"; }
@@ -80,6 +80,7 @@ ensure_apt_updated() {
 }
 
 # Install one package name via current PM. Args: manifest_suffix package_name [alt_name...]
+# Optional env: BREW_CASK=1 → brew install --cask
 pm_install() {
 	suffix="$1"
 	shift
@@ -88,8 +89,13 @@ pm_install() {
 
 	case "$PACKAGE_MANAGER" in
 		brew)
-			brew install "$pkg" || return 1
-			record_pkg "brew:${suffix}"
+			if [ "${BREW_CASK:-0}" = "1" ]; then
+				brew install --cask "$pkg" || return 1
+				record_pkg "brew-cask:${suffix}"
+			else
+				brew install "$pkg" || return 1
+				record_pkg "brew:${suffix}"
+			fi
 			;;
 		apt)
 			ensure_apt_updated
@@ -103,19 +109,39 @@ pm_install() {
 			record_pkg "apt:${suffix}"
 			;;
 		dnf)
-			run_root dnf install -y "$pkg" || return 1
+			run_root dnf install -y "$pkg" || {
+				for alt in "$@"; do
+					run_root dnf install -y "$alt" && record_pkg "dnf:${suffix}" && return 0
+				done
+				return 1
+			}
 			record_pkg "dnf:${suffix}"
 			;;
 		pacman)
-			run_root pacman -Syu --needed --noconfirm "$pkg" || return 1
+			run_root pacman -Syu --needed --noconfirm "$pkg" || {
+				for alt in "$@"; do
+					run_root pacman -Syu --needed --noconfirm "$alt" && record_pkg "pacman:${suffix}" && return 0
+				done
+				return 1
+			}
 			record_pkg "pacman:${suffix}"
 			;;
 		zypper)
-			run_root zypper --non-interactive install "$pkg" || return 1
+			run_root zypper --non-interactive install "$pkg" || {
+				for alt in "$@"; do
+					run_root zypper --non-interactive install "$alt" && record_pkg "zypper:${suffix}" && return 0
+				done
+				return 1
+			}
 			record_pkg "zypper:${suffix}"
 			;;
 		apk)
-			run_root apk add --no-cache "$pkg" || return 1
+			run_root apk add --no-cache "$pkg" || {
+				for alt in "$@"; do
+					run_root apk add --no-cache "$alt" && record_pkg "apk:${suffix}" && return 0
+				done
+				return 1
+			}
 			record_pkg "apk:${suffix}"
 			;;
 		pkg)
@@ -134,7 +160,7 @@ pm_install() {
 	esac
 }
 
-# Packages queued for one transaction.
+# Packages queued for one transaction (formulas only; casks stay out-of-band).
 PACKAGE_QUEUE=""
 MANIFEST_QUEUE=""
 
@@ -192,13 +218,115 @@ flush_packages() {
 	done
 }
 
+# ensure_brew_cask <command_or_label> <manifest_suffix> <cask> — brew cask only
+ensure_brew_cask() {
+	label="$1"
+	suffix="$2"
+	cask="$3"
 
+	# If label looks like a real CLI name and is already present, skip.
+	case "$label" in
+		font-* | fonts-*) ;;
+		*)
+			if command -v "$label" >/dev/null 2>&1; then
+				info "${label} already installed: $(command -v "$label")"
+				return 0
+			fi
+			;;
+	esac
 
+	if [ "$PACKAGE_MANAGER" != "brew" ]; then
+		return 1
+	fi
 
+	if brew list --cask "$cask" >/dev/null 2>&1; then
+		info "brew cask ${cask} already installed"
+		record_pkg "brew-cask:${suffix}"
+		return 0
+	fi
+
+	info "${label}: installing brew cask ${cask}..."
+	BREW_CASK=1 pm_install "$suffix" "$cask" || {
+		warn "failed brew cask ${cask} (non-fatal)"
+		return 1
+	}
+	if command -v "$label" >/dev/null 2>&1; then
+		info "${label} installed: $(command -v "$label")"
+	else
+		info "brew cask ${cask} installed"
+	fi
+	return 0
+}
+
+# JetBrainsMono Nerd Font (WezTerm font=)
+font_jetbrains_mono_nerd_present() {
+	if command -v fc-list >/dev/null 2>&1; then
+		fc-list 2>/dev/null | grep -qi 'JetBrainsMono.*Nerd' && return 0
+	fi
+	if [ -d "${home}/Library/Fonts" ]; then
+		ls "${home}/Library/Fonts" 2>/dev/null | grep -qi 'JetBrainsMono.*Nerd' && return 0
+	fi
+	if [ -d "/Library/Fonts" ]; then
+		ls "/Library/Fonts" 2>/dev/null | grep -qi 'JetBrainsMono.*Nerd' && return 0
+	fi
+	if [ "$PACKAGE_MANAGER" = "brew" ] && brew list --cask font-jetbrains-mono-nerd-font >/dev/null 2>&1; then
+		return 0
+	fi
+	return 1
+}
+
+ensure_font_jetbrains_mono_nerd() {
+	if font_jetbrains_mono_nerd_present; then
+		info "JetBrainsMono Nerd Font already present"
+		return 0
+	fi
+
+	info "JetBrainsMono Nerd Font not found — installing via ${PACKAGE_MANAGER}..."
+	case "$PACKAGE_MANAGER" in
+		brew)
+			BREW_CASK=1 pm_install font-jetbrains-mono-nerd font-jetbrains-mono-nerd-font || {
+				warn "failed font-jetbrains-mono-nerd-font (non-fatal)"
+				return 1
+			}
+			;;
+		pacman)
+			# Arch/community: ttf-jetbrains-mono-nerd (AUR/extra depending on distro)
+			pm_install font-jetbrains-mono-nerd ttf-jetbrains-mono-nerd otf-jetbrains-mono-nerd || {
+				warn "failed JetBrainsMono Nerd Font package (non-fatal)"
+				return 1
+			}
+			;;
+		*)
+			warn "no automated JetBrainsMono Nerd Font package for pm=${PACKAGE_MANAGER} — install manually (nerd-fonts)"
+			return 1
+			;;
+	esac
+
+	if font_jetbrains_mono_nerd_present; then
+		info "JetBrainsMono Nerd Font installed"
+		return 0
+	fi
+	info "font package installed (may need new session / fc-cache)"
+	return 0
+}
+
+# Core editor + nvim companions (fzf-lua / yazi / grep)
 ensure_cmd nvim neovim neovim || true
 ensure_cmd yazi yazi yazi || true
 ensure_cmd fzf fzf fzf || true
 ensure_cmd rg ripgrep ripgrep || true
+# Keyboard remapper (config: ~/.config/kanata/kanata.kbd ; macOS service: sudo brew services start kanata)
+ensure_cmd kanata kanata kanata || true
+# Terminal mux + herdr (formulas when available)
 ensure_cmd zellij zellij zellij || true
+ensure_cmd herdr herdr herdr || true
 
 flush_packages || true
+
+# Terminal GUI / fonts (brew casks; Linux falls back to ensure_cmd via pm after queue)
+# wezterm: brew cask; Linux package name usually wezterm
+if ! ensure_brew_cask wezterm wezterm wezterm; then
+	ensure_cmd wezterm wezterm wezterm || true
+	flush_packages || true
+fi
+ensure_font_jetbrains_mono_nerd || true

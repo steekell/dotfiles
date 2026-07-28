@@ -121,6 +121,14 @@ dotfiles/
 │       └── run_after_90-finalize.ps1.tmpl
 │
 ├── dot_config/
+│   ├── kanata/
+│   │   └── kanata.kbd.tmpl      # → ~/.config/kanata/kanata.kbd (darwin vs linux/win)
+│   ├── wezterm/
+│   │   └── wezterm.lua          # → ~/.config/wezterm/wezterm.lua
+│   ├── herdr/
+│   │   └── config.toml          # → ~/.config/herdr/config.toml (défaut upstream)
+│   ├── zellij/
+│   │   └── config.kdl           # → ~/.config/zellij/config.kdl (dump upstream)
 │   └── nvim/                    # → ~/.config/nvim (tous OS ; Windows via XDG_CONFIG_HOME)
 │       ├── init.lua
 │       ├── lua/
@@ -163,6 +171,36 @@ chezmoi status
 chezmoi diff
 chezmoi apply
 chezmoi edit ~/.config/nvim/init.lua
+```
+
+### Terminal (WezTerm / Zellij / Herdr)
+
+| Pièce | Chemin | Install binaire |
+|---|---|---|
+| WezTerm | `~/.config/wezterm/wezterm.lua` | `10-packages` (brew cask / winget) |
+| Font | JetBrainsMono Nerd Font | `10-packages` (brew cask `font-jetbrains-mono-nerd-font`) |
+| Zellij | `~/.config/zellij/config.kdl` (dump `zellij setup --dump-config`) | `ensure_cmd zellij` |
+| Herdr | `~/.config/herdr/config.toml` (`herdr --default-config`) | `ensure_cmd herdr` |
+
+Configs herdr/zellij = **origin upstream** (pas de custom maison). WezTerm = config user (font Nerd + keybinds).
+
+### Kanata (clavier)
+
+- Config : `~/.config/kanata/kanata.kbd` (managée ; source `kanata.kbd.tmpl`, branche macOS vs Linux/Windows)
+- Binaire : installé par `10-packages` si absent (`kanata` via brew/apt/…)
+- **macOS** dépendances hors brew (manuel, une fois) :
+  1. Driver **Karabiner-DriverKit-VirtualHIDDevice v6.2.0** (pkg pqrs ; pas un brew package kanata)
+  2. Activer l’extension : **Réglages → Général → Ouverture et extensions → Extensions de pilotes** → `org.pqrs.Karabiner-DriverKit-VirtualHIDDevice`
+  3. Daemon VirtualHID (LaunchDaemon `org.pqrs.Karabiner-VirtualHIDDevice-Daemon` si pas Karabiner-Elements)
+  4. Permissions pour le binaire `/opt/homebrew/Cellar/kanata/*/bin/kanata` :
+     - Confidentialité → **Surveillance des entrées**
+     - Confidentialité → **Accessibilité**
+  5. Service :
+
+```sh
+sudo brew services start kanata
+# logs: $(brew --prefix)/var/log/kanata.log
+sudo brew services restart kanata   # après changement de permissions / driver
 ```
 
 ## Développement local

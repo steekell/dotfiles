@@ -1,5 +1,5 @@
 # run_onchange_before_10 — packages when this script changes.
-# Idempotent tools for nvim workflow: neovim, yazi, fzf, ripgrep.
+# Idempotent host CLIs: nvim workflow + terminal stack (wezterm, zellij, herdr).
 $ErrorActionPreference = 'Stop'
 
 function Write-PkgInfo([string]$Message) {
@@ -40,12 +40,13 @@ function Test-Cmd([string]$Name) {
 }
 
 # Ensure-Cmd -Command nvim -WingetId Neovim.Neovim -ChocoName neovim -ScoopName neovim
+# Empty WingetId/ChocoName/ScoopName = skip that PM path
 function Ensure-Cmd {
     param(
         [Parameter(Mandatory = $true)][string] $Command,
-        [Parameter(Mandatory = $true)][string] $WingetId,
-        [Parameter(Mandatory = $true)][string] $ChocoName,
-        [Parameter(Mandatory = $true)][string] $ScoopName
+        [string] $WingetId = '',
+        [string] $ChocoName = '',
+        [string] $ScoopName = ''
     )
 
     if (Test-Cmd $Command) {
@@ -58,14 +59,26 @@ function Ensure-Cmd {
 
     switch ($pm) {
         'winget' {
+            if ([string]::IsNullOrWhiteSpace($WingetId)) {
+                Write-PkgWarn "no winget id for $Command — install manually"
+                return
+            }
             & winget install --id $WingetId -e --accept-source-agreements --accept-package-agreements
             Add-Manifest "winget:$WingetId"
         }
         'choco' {
+            if ([string]::IsNullOrWhiteSpace($ChocoName)) {
+                Write-PkgWarn "no choco name for $Command — install manually"
+                return
+            }
             & choco install $ChocoName -y
             Add-Manifest "choco:$ChocoName"
         }
         'scoop' {
+            if ([string]::IsNullOrWhiteSpace($ScoopName)) {
+                Write-PkgWarn "no scoop name for $Command — install manually"
+                return
+            }
             & scoop install $ScoopName
             Add-Manifest "scoop:$ScoopName"
         }
@@ -83,6 +96,53 @@ function Ensure-Cmd {
     }
 }
 
+function Ensure-Herdr {
+    if (Test-Cmd 'herdr') {
+        Write-PkgInfo "herdr already installed: $((Get-Command herdr).Source)"
+        return
+    }
+
+    Write-PkgInfo 'herdr not found — trying winget/scoop, else official install.ps1...'
+    $pm = Get-PackageManager
+    try {
+        switch ($pm) {
+            'winget' {
+                # May not exist yet; fall through on failure
+                & winget install --id herdr.herdr -e --accept-source-agreements --accept-package-agreements 2>$null
+                if ($LASTEXITCODE -eq 0) { Add-Manifest 'winget:herdr.herdr' }
+            }
+            'scoop' {
+                & scoop install herdr 2>$null
+                if ($LASTEXITCODE -eq 0) { Add-Manifest 'scoop:herdr' }
+            }
+        }
+    } catch {
+        # continue to official installer
+    }
+
+    Refresh-Path
+    if (Test-Cmd 'herdr') {
+        Write-PkgInfo "herdr installed: $((Get-Command herdr).Source)"
+        return
+    }
+
+    try {
+        # Official Windows beta installer (herdr.dev)
+        Invoke-Expression (Invoke-RestMethod -Uri 'https://herdr.dev/install.ps1')
+        Add-Manifest 'herdr:install.ps1'
+    } catch {
+        Write-PkgWarn "herdr install failed: $_ — see https://herdr.dev (non-fatal)"
+        return
+    }
+
+    Refresh-Path
+    if (Test-Cmd 'herdr') {
+        Write-PkgInfo "herdr installed: $((Get-Command herdr).Source)"
+    } else {
+        Write-PkgWarn 'herdr install finished but not on PATH yet — open a new terminal'
+    }
+}
+
 $pm = Get-PackageManager
 Write-PkgInfo "os=$os pm=$pm"
 
@@ -96,6 +156,8 @@ $specs = @(
     @{ Command = 'yazi'; WingetId = 'sxyazi.yazi'; ChocoName = 'yazi'; ScoopName = 'yazi' }
     @{ Command = 'fzf'; WingetId = 'junegunn.fzf'; ChocoName = 'fzf'; ScoopName = 'fzf' }
     @{ Command = 'rg'; WingetId = 'BurntSushi.ripgrep.MSVC'; ChocoName = 'ripgrep'; ScoopName = 'ripgrep' }
+    @{ Command = 'wezterm'; WingetId = 'wez.WezTerm'; ChocoName = 'wezterm'; ScoopName = 'wezterm' }
+    @{ Command = 'zellij'; WingetId = ''; ChocoName = ''; ScoopName = 'zellij' }
 )
 
 foreach ($s in $specs) {
@@ -105,5 +167,14 @@ foreach ($s in $specs) {
         Write-PkgWarn "Ensure-Cmd $($s.Command) failed: $_"
     }
 }
+
+try {
+    Ensure-Herdr
+} catch {
+    Write-PkgWarn "Ensure-Herdr failed: $_"
+}
+
+# Nerd font: no reliable winget id — manual / nerd-fonts release
+Write-PkgInfo 'hint: install JetBrainsMono Nerd Font manually if missing (WezTerm font=JetBrainsMono Nerd Font)'
 
 Write-PkgInfo 'ok'
