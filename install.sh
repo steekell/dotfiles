@@ -72,6 +72,10 @@ init_or_update() {
 				info "warning: ref '${REF}' not found locally after fetch; applying current source"
 			fi
 		fi
+		# Regenerate machine-local Chezmoi config after switching refs.
+		# Without this, .data.system can remain from another host (for example
+		# darwin/brew when the current host is linux/pacman).
+		chezmoi init --force
 		chezmoi apply --keep-going
 		return 0
 	fi
