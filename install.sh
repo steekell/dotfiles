@@ -10,7 +10,7 @@ set -eu
 
 REPO_URL="${DOTFILES_REPO:-https://github.com/steekell/dotfiles.git}"
 # Pin to this release by default (override: DOTFILES_REF=main).
-DEFAULT_REF="v0.1.3"
+DEFAULT_REF="v0.1.4"
 REF="${DOTFILES_REF:-$DEFAULT_REF}"
 BIN_DIR="${CHEZMOI_BIN_DIR:-$HOME/.local/bin}"
 export PATH="${BIN_DIR}:${PATH}"
