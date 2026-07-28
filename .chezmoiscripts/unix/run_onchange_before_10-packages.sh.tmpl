@@ -107,7 +107,7 @@ pm_install() {
 			record_pkg "dnf:${suffix}"
 			;;
 		pacman)
-			run_root pacman -Sy --noconfirm "$pkg" || return 1
+			run_root pacman -Syu --needed --noconfirm "$pkg" || return 1
 			record_pkg "pacman:${suffix}"
 			;;
 		zypper)
@@ -134,6 +134,10 @@ pm_install() {
 	esac
 }
 
+# Packages queued for one transaction.
+PACKAGE_QUEUE=""
+MANIFEST_QUEUE=""
+
 # ensure_cmd <command> <manifest_suffix> <pkg> [alt_pkgs...]
 ensure_cmd() {
 	cmd="$1"
@@ -144,8 +148,15 @@ ensure_cmd() {
 		info "${cmd} already installed: $(command -v "$cmd")"
 		return 0
 	fi
-
-	info "${cmd} not found — installing via ${PACKAGE_MANAGER} ($*)..."
+	case "$PACKAGE_MANAGER" in
+		brew|apt|dnf|pacman|zypper|apk|pkg)
+			pkg="$1"
+			PACKAGE_QUEUE="${PACKAGE_QUEUE} ${pkg}"
+			MANIFEST_QUEUE="${MANIFEST_QUEUE} ${PACKAGE_MANAGER}:${suffix}"
+			info "${cmd} not found — queued ${PACKAGE_MANAGER} package ${pkg}"
+			return 0
+			;;
+	esac
 	if ! pm_install "$suffix" "$@"; then
 		warn "failed to install ${cmd} (non-fatal)"
 		return 1
@@ -159,10 +170,34 @@ ensure_cmd() {
 	return 1
 }
 
-# Core editor + nvim companions (fzf-lua / yazi / grep)
-ensure_cmd nvim neovim neovim editors/neovim || true
+flush_packages() {
+	[ -n "$PACKAGE_QUEUE" ] || return 0
+	info "installing queued packages in one transaction (${PACKAGE_MANAGER})..."
+	# shellcheck disable=SC2086
+	case "$PACKAGE_MANAGER" in
+		brew) brew install $PACKAGE_QUEUE ;;
+		apt) ensure_apt_updated && run_root apt-get install -y $PACKAGE_QUEUE ;;
+		dnf) run_root dnf install -y $PACKAGE_QUEUE ;;
+		pacman) run_root pacman -Syu --needed --noconfirm $PACKAGE_QUEUE ;;
+		zypper) run_root zypper --non-interactive install $PACKAGE_QUEUE ;;
+		apk) run_root apk add --no-cache $PACKAGE_QUEUE ;;
+		pkg) run_root pkg install -y $PACKAGE_QUEUE ;;
+		*) warn "cannot batch-install packages for ${PACKAGE_MANAGER}"; return 1 ;;
+	esac || {
+		warn "failed to install queued packages (non-fatal)"
+		return 1
+	}
+	for item in $MANIFEST_QUEUE; do
+		record_pkg "$item"
+	done
+}
+
+
+
+
+ensure_cmd nvim neovim neovim || true
 ensure_cmd yazi yazi yazi || true
 ensure_cmd fzf fzf fzf || true
 ensure_cmd rg ripgrep ripgrep || true
 
-info "ok"
+flush_packages || true
