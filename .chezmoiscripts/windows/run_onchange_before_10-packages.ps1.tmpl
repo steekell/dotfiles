@@ -1,5 +1,5 @@
 # run_onchange_before_10 — packages when this script changes.
-# Idempotent host CLIs: nvim workflow + terminal stack (wezterm, zellij, herdr).
+# Idempotent host CLIs: nvim + terminal stack + zshrc companions (eza/bat/…).
 $ErrorActionPreference = 'Stop'
 
 function Write-PkgInfo([string]$Message) {
@@ -158,6 +158,15 @@ $specs = @(
     @{ Command = 'rg'; WingetId = 'BurntSushi.ripgrep.MSVC'; ChocoName = 'ripgrep'; ScoopName = 'ripgrep' }
     @{ Command = 'wezterm'; WingetId = 'wez.WezTerm'; ChocoName = 'wezterm'; ScoopName = 'wezterm' }
     @{ Command = 'zellij'; WingetId = ''; ChocoName = ''; ScoopName = 'zellij' }
+    # zshrc companions A+B+C (xclip/wl-clipboard = Unix only — skipped on Windows)
+    @{ Command = 'git'; WingetId = 'Git.Git'; ChocoName = 'git'; ScoopName = 'git' }
+    @{ Command = 'eza'; WingetId = 'eza-community.eza'; ChocoName = 'eza'; ScoopName = 'eza' }
+    @{ Command = 'bat'; WingetId = 'sharkdp.bat'; ChocoName = 'bat'; ScoopName = 'bat' }
+    @{ Command = 'zoxide'; WingetId = 'ajeetdsouza.zoxide'; ChocoName = 'zoxide'; ScoopName = 'zoxide' }
+    @{ Command = 'lazygit'; WingetId = 'JesseDuffield.lazygit'; ChocoName = 'lazygit'; ScoopName = 'lazygit' }
+    @{ Command = 'gitui'; WingetId = 'gitui.gitui'; ChocoName = 'gitui'; ScoopName = 'gitui' }
+    @{ Command = 'trash'; WingetId = ''; ChocoName = 'trash-cli'; ScoopName = 'trash-cli' }
+    @{ Command = 'tree-sitter'; WingetId = ''; ChocoName = ''; ScoopName = 'tree-sitter' }
 )
 
 foreach ($s in $specs) {

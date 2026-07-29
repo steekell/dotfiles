@@ -1,6 +1,6 @@
 #!/bin/sh
 # run_onchange_before_10 — install/update packages when this script changes.
-# Idempotent host CLIs: nvim workflow + terminal stack (wezterm, zellij, herdr, nerd font).
+# Idempotent host CLIs: nvim + terminal stack + zshrc companions (eza/bat/…).
 set -eu
 
 info() { printf 'packages(10): %s\n' "$*"; }
@@ -311,7 +311,7 @@ ensure_font_jetbrains_mono_nerd() {
 }
 
 # Core editor + nvim companions (fzf-lua / yazi / grep)
-ensure_cmd nvim neovim neovim || true
+ensure_cmd nvim neovim neovim editors/neovim || true
 ensure_cmd yazi yazi yazi || true
 ensure_cmd fzf fzf fzf || true
 ensure_cmd rg ripgrep ripgrep || true
@@ -320,6 +320,36 @@ ensure_cmd kanata kanata kanata || true
 # Terminal mux + herdr (formulas when available)
 ensure_cmd zellij zellij zellij || true
 ensure_cmd herdr herdr herdr || true
+
+# --- zshrc companions (A+B+C) ---
+# A: core shell UX
+ensure_cmd git git git || true
+ensure_cmd eza eza eza || true
+# bat: Debian/Ubuntu often ship `batcat` binary
+if command -v bat >/dev/null 2>&1 || command -v batcat >/dev/null 2>&1; then
+	if command -v bat >/dev/null 2>&1; then
+		info "bat already installed: $(command -v bat)"
+	else
+		info "bat already installed: $(command -v batcat) (batcat)"
+	fi
+else
+	ensure_cmd bat bat bat || true
+fi
+ensure_cmd zoxide zoxide zoxide || true
+# B: git TUIs
+ensure_cmd lazygit lazygit lazygit || true
+ensure_cmd gitui gitui gitui || true
+# C: trash + tree-sitter CLI (nvim parsers) + Linux clipboard
+ensure_cmd trash-empty trash-cli trash-cli || true
+ensure_cmd tree-sitter tree-sitter-cli tree-sitter-cli tree-sitter || true
+# Clipboard: skip macOS (pbcopy); on other Unix try both toolkits (non-fatal)
+case "${os}" in
+	darwin | windows) ;;
+	*)
+		ensure_cmd xclip xclip xclip || true
+		ensure_cmd wl-copy wl-clipboard wl-clipboard || true
+		;;
+esac
 
 flush_packages || true
 

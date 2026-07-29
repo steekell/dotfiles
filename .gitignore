@@ -4,6 +4,9 @@ Thumbs.db
 *.swp
 *~
 
+# Hermes desktop (attachments / session drops in source tree)
+.hermes/
+
 # Editor
 .idea/
 .vscode/
