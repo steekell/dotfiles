@@ -27,10 +27,29 @@ vim.api.nvim_create_autocmd("PackChanged", {
 })
 
 require("nvim-treesitter").setup()
+-- Highlight for host languages + chezmoi *.tmpl (mapped in autocmds.lua)
+-- Filetype → treesitter language when names differ
+local ts_lang = {
+  zsh = "bash", -- no dedicated zsh grammar in most installs
+  sh = "bash",
+  ps1 = "powershell",
+  lisp = "commonlisp",
+  gitconfig = "git_config",
+}
 vim.api.nvim_create_autocmd("FileType", {
-  pattern = { "lua", "python", "bash" },
-  callback = function()
-    local ok, err = pcall(vim.treesitter.start)
+  pattern = {
+    "lua", "python", "bash", "zsh", "sh",
+    "toml", "yaml", "json", "markdown", "ps1", "kdl", "lisp",
+    "gitconfig", "sshconfig",
+  },
+  callback = function(ev)
+    local lang = ts_lang[ev.match]
+    local ok, err
+    if lang then
+      ok, err = pcall(vim.treesitter.start, ev.buf, lang)
+    else
+      ok, err = pcall(vim.treesitter.start)
+    end
     if not ok then
       vim.notify("treesitter: " .. err, vim.log.levels.WARN)
     end
