@@ -1,5 +1,32 @@
 # ~/.zshrc — multi-platform (macOS, Linux/WSL, *BSD, Git Bash/MSYS).
-# Runtime detection: same logic everywhere after apply.
+# Runtime detection only (no chezmoi OS branches). Apply once → same file everywhere.
+
+## Sommaire
+## ==1. Environnement & PATH
+## ==2. Options zsh
+## ==3. Historique
+## ==4. Complétion
+## ==5. Keybindings
+## ==6. Prompt
+## ==7. Aliases
+## ==8. Fonctions
+## ==9. Plugins / sources externes
+
+## ==1. Environnement & PATH
+
+export LANG="${LANG:-fr_FR.UTF-8}"
+export LC_ALL="${LC_ALL:-fr_FR.UTF-8}"
+
+# Browser: prefer brave-origin, then common fallbacks
+if command -v brave-origin >/dev/null 2>&1; then
+  export BROWSER=brave-origin
+elif command -v brave >/dev/null 2>&1; then
+  export BROWSER=brave
+elif command -v open >/dev/null 2>&1; then
+  export BROWSER=open
+elif command -v xdg-open >/dev/null 2>&1; then
+  export BROWSER=xdg-open
+fi
 
 # Homebrew if present (Apple Silicon, Intel, Linuxbrew)
 for _brew in \
@@ -15,19 +42,18 @@ do
 done
 unset _brew
 
-# User binaries (chezmoi, pipx, rustup, etc.)
-case ":${PATH}:" in
-  *":${HOME}/.local/bin:"*) ;;
-  *) export PATH="${HOME}/.local/bin:${PATH}" ;;
-esac
+# User binaries (chezmoi, pipx, rustup, cargo, etc.)
+typeset -U path PATH
+path=(
+  "${HOME}/.local/bin"
+  "${HOME}/.cargo/bin"
+  $path
+)
 
 # Windows-style user bin (Git Bash / MSYS / Cygwin)
 case "$(uname -s 2>/dev/null)" in
   MINGW* | MSYS* | CYGWIN*)
-    case ":${PATH}:" in
-      *":${HOME}/bin:"*) ;;
-      *) export PATH="${HOME}/bin:${PATH}" ;;
-    esac
+    path=("${HOME}/bin" $path)
     ;;
 esac
 
@@ -38,17 +64,507 @@ if [ -s "${HOME}/.bun/_bun" ]; then
 fi
 if [ -d "${HOME}/.bun/bin" ]; then
   export BUN_INSTALL="${HOME}/.bun"
-  case ":${PATH}:" in
-    *":${BUN_INSTALL}/bin:"*) ;;
-    *) export PATH="${BUN_INSTALL}/bin:${PATH}" ;;
-  esac
+  path=("${BUN_INSTALL}/bin" $path)
 fi
+
+export PATH
 
 # Prefer nvim when available
 if command -v nvim >/dev/null 2>&1; then
-  export EDITOR="nvim"
-  export VISUAL="nvim"
+  export EDITOR=nvim
+  export VISUAL=nvim
 elif command -v vim >/dev/null 2>&1; then
-  export EDITOR="vim"
-  export VISUAL="vim"
+  export EDITOR=vim
+  export VISUAL=vim
+else
+  export EDITOR="${EDITOR:-vi}"
+  export VISUAL="${VISUAL:-vi}"
+fi
+
+## ==2. Options zsh
+
+setopt AUTO_CD              # taper un chemin suffit pour y aller
+setopt AUTO_PUSHD           # cd empile dans la pile de dirs
+setopt PUSHD_IGNORE_DUPS    # pas de doublons dans la pile
+setopt CORRECT              # correction de commandes
+setopt NO_BEEP              # silence
+setopt EXTENDED_GLOB        # globs avancés
+setopt GLOB_DOTS            # les globs matchent les fichiers cachés
+setopt INTERACTIVE_COMMENTS # autoriser # dans le shell interactif
+setopt PROMPT_SUBST         # évaluer $() dans le prompt à chaque affichage
+
+## ==3. Historique
+
+HISTFILE="${HOME}/.zsh_history"
+HISTSIZE=10000
+SAVEHIST=10000
+
+setopt SHARE_HISTORY        # partage entre sessions
+setopt HIST_IGNORE_DUPS     # pas de lignes dupliquées consécutives
+setopt HIST_IGNORE_SPACE    # ignorer les lignes précédées d'un espace
+setopt HIST_VERIFY          # confirmer avant d'exécuter une expansion !
+setopt HIST_REDUCE_BLANKS   # supprimer les espaces superflus
+
+## ==4. Complétion
+
+autoload -Uz compinit && compinit
+
+zstyle ':completion:*' menu select
+zstyle ':completion:*' matcher-list 'm:{a-z}={A-Z}'
+zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
+zstyle ':completion:*:descriptions' format '%F{#89b4fa}── %d%f'
+zstyle ':completion:*' group-name ''
+
+## ==5. Keybindings
+
+bindkey -v                           # mode vi
+
+### Délai réduit pour la détection de la touche Escape
+KEYTIMEOUT=1
+
+### Bindings Ctrl conservés malgré le mode vi (kanata : lalt→lCtrl sur certaines machines)
+bindkey '^R' history-incremental-search-backward
+bindkey '^A' beginning-of-line
+bindkey '^E' end-of-line
+bindkey '^K' kill-line
+bindkey '^U' backward-kill-line
+bindkey '^W' backward-kill-word
+bindkey '^P' up-line-or-history
+bindkey '^N' down-line-or-history
+
+## ==6. Prompt
+
+### Indicateur de mode vi dans le prompt (insert / normal)
+function _vi_mode_indicator {
+  case "${KEYMAP}" in
+    vicmd) echo '%F{#f9e2af}[N]%f ';;
+    *)     echo '';;
+  esac
+}
+
+function zle-line-init zle-keymap-select {
+  zle reset-prompt
+}
+zle -N zle-line-init
+zle -N zle-keymap-select
+
+### Prompt : chemin · flèche (couleur selon code retour)
+PROMPT='%F{#89b4fa}%~%f $(_vi_mode_indicator)%(?,%F{#a6e3a1},%F{#f38ba8})❯%f '
+
+## ==7. Aliases
+
+### Gestionnaire de paquets (détection runtime — mêmes raccourcis partout)
+# pup=update  pin=install  prm=remove  prmd=remove+deps  prma=purge unused
+# psea=search  plis=list/search local  pinf=info  pinfin=info local  plisv=list files  plisin=owns file
+# prmaforce=orphans/autoremove force  pclean=cache light  pcleana=cache full
+_pm=
+if command -v brew >/dev/null 2>&1; then
+  _pm=brew
+elif command -v pacman >/dev/null 2>&1; then
+  _pm=pacman
+elif command -v apt-get >/dev/null 2>&1; then
+  _pm=apt
+elif command -v dnf >/dev/null 2>&1; then
+  _pm=dnf
+elif command -v zypper >/dev/null 2>&1; then
+  _pm=zypper
+elif command -v apk >/dev/null 2>&1; then
+  _pm=apk
+elif command -v pkg >/dev/null 2>&1; then
+  _pm=pkg
+fi
+
+case "${_pm}" in
+  brew)
+    alias pup='brew update && brew upgrade'
+    alias pin='brew install'
+    alias prm='brew uninstall'
+    alias prmd='brew uninstall --zap'
+    alias prma='brew autoremove'
+    alias psea='brew search'
+    alias plis='brew list'
+    alias pinf='brew info'
+    alias pinfin='brew info --installed'
+    alias plisv='brew list --verbose'
+    alias plisin='brew uses --installed'   # inverse of owns; use: brew --prefix formula
+    alias pclean='brew cleanup'
+    alias pcleana='brew cleanup -s'
+    ;;
+  pacman)
+    alias pup='sudo pacman -Syu'
+    alias pin='sudo pacman -S'
+    alias prm='sudo pacman -R'
+    alias prmd='sudo pacman -Rs'
+    alias prma='sudo pacman -Rns'
+    alias psea='pacman -Ss'
+    alias plis='pacman -Qs'
+    alias pinf='pacman -Si'
+    alias pinfin='pacman -Qi'
+    alias plisv='pacman -Ql'
+    alias plisin='pacman -Qo'
+    alias prmaforce='sudo pacman -Rns $(pacman -Qtdq)'
+    alias pclean='sudo pacman -Sc'
+    alias pcleana='sudo pacman -Scc'
+    ;;
+  apt)
+    alias pup='sudo apt-get update && sudo apt-get upgrade'
+    alias pin='sudo apt-get install'
+    alias prm='sudo apt-get remove'
+    alias prmd='sudo apt-get autoremove --purge'
+    alias prma='sudo apt-get autoremove --purge'
+    alias psea='apt-cache search'
+    alias plis='dpkg -l'
+    alias pinf='apt-cache show'
+    alias pinfin='dpkg -s'
+    alias plisv='dpkg -L'
+    alias plisin='dpkg -S'
+    alias pclean='sudo apt-get clean'
+    alias pcleana='sudo apt-get clean && sudo apt-get autoclean'
+    ;;
+  dnf)
+    alias pup='sudo dnf upgrade'
+    alias pin='sudo dnf install'
+    alias prm='sudo dnf remove'
+    alias prmd='sudo dnf remove'
+    alias prma='sudo dnf autoremove'
+    alias psea='dnf search'
+    alias plis='dnf list installed'
+    alias pinf='dnf info'
+    alias pinfin='dnf info installed'
+    alias plisv='rpm -ql'
+    alias plisin='rpm -qf'
+    alias pclean='sudo dnf clean packages'
+    alias pcleana='sudo dnf clean all'
+    ;;
+  zypper)
+    alias pup='sudo zypper refresh && sudo zypper update'
+    alias pin='sudo zypper install'
+    alias prm='sudo zypper remove'
+    alias prmd='sudo zypper remove -u'
+    alias prma='sudo zypper packages --unneeded'
+    alias psea='zypper search'
+    alias plis='zypper search -i'
+    alias pinf='zypper info'
+    alias pinfin='zypper info'
+    alias plisv='rpm -ql'
+    alias plisin='rpm -qf'
+    alias pclean='sudo zypper clean'
+    alias pcleana='sudo zypper clean --all'
+    ;;
+  apk)
+    alias pup='sudo apk update && sudo apk upgrade'
+    alias pin='sudo apk add'
+    alias prm='sudo apk del'
+    alias prmd='sudo apk del'
+    alias prma='sudo apk cache clean'
+    alias psea='apk search'
+    alias plis='apk info -e'
+    alias pinf='apk info'
+    alias pinfin='apk info'
+    alias plisv='apk info -L'
+    alias plisin='apk info -W'
+    alias pclean='sudo apk cache clean'
+    alias pcleana='sudo apk cache clean'
+    ;;
+  pkg)
+    # FreeBSD pkg
+    alias pup='sudo pkg update && sudo pkg upgrade'
+    alias pin='sudo pkg install'
+    alias prm='sudo pkg delete'
+    alias prmd='sudo pkg delete -R'
+    alias prma='sudo pkg autoremove'
+    alias psea='pkg search'
+    alias plis='pkg info'
+    alias pinf='pkg info'
+    alias pinfin='pkg info'
+    alias plisv='pkg info -l'
+    alias plisin='pkg which'
+    alias pclean='sudo pkg clean'
+    alias pcleana='sudo pkg clean -a'
+    ;;
+esac
+unset _pm
+
+### Git
+alias gs='git status'
+alias ga='git add'
+alias gaa='git add .'
+alias gc='git commit'
+alias gca='git commit -am'
+alias gcaa='git commit -am "."'
+alias gp='git push'
+alias gl='git log --oneline --graph --decorate'
+command -v lazygit >/dev/null 2>&1 && alias lg='lazygit'
+command -v gitui >/dev/null 2>&1 && alias gt='gitui'
+alias t='git push'
+
+### Chezmoi
+if command -v chezmoi >/dev/null 2>&1; then
+  alias cmcd='chezmoi cd'
+  alias cmad='chezmoi add'
+  alias cme='chezmoi edit'
+  alias cmd='chezmoi diff'
+  alias cmap='chezmoi apply'
+fi
+
+### Navigation
+alias ..='cd ..'
+alias ...='cd ../..'
+alias ....='cd ../../..'
+[[ -d "${HOME}/steekell" ]] && alias cds='cd ~/steekell'
+alias cdc='cd ~/.config'
+alias cdcv='cd ~/.config/nvim'
+alias cdt='cd /tmp'
+[[ -d /partage ]] && alias cdp='cd /partage'
+[[ -d /data ]] && alias cdd='cd /data'
+[[ -d /data/infra/archinstall ]] && alias cda='cd /data/infra/archinstall'
+
+### Listing (eza if present, else ls)
+if command -v eza >/dev/null 2>&1; then
+  alias ls='eza --color=auto --group-directories-first'
+  alias ll='eza -lh --color=auto --group-directories-first --git'
+  alias la='eza -lAh --color=auto --group-directories-first --git'
+else
+  case "$(uname -s 2>/dev/null)" in
+    Darwin) alias ls='ls -G' ;;
+    *)      alias ls='ls --color=auto' 2>/dev/null || alias ls='ls' ;;
+  esac
+  alias ll='ls -lh'
+  alias la='ls -lAh'
+fi
+if command -v bat >/dev/null 2>&1; then
+  alias bat='bat --style=plain --paging=never'
+elif command -v batcat >/dev/null 2>&1; then
+  alias bat='batcat --style=plain --paging=never'
+fi
+
+### Éditeur
+alias v='nvim'
+alias vi='nvim'
+alias vim='nvim'
+if command -v fzf >/dev/null 2>&1 && command -v nvim >/dev/null 2>&1; then
+  alias vf='nvim "$(fzf)"'
+fi
+alias vzs='nvim ~/.zshrc'
+[[ -f /data/install-arch.md ]] && alias vin='nvim /data/install-arch.md'
+alias vvi='nvim ~/.config/nvim/init.lua'
+
+### Codes (machine-specific path — only if binary exists)
+if [[ -x /data/code/cli/calculatrice/taget/relese/calculatrice ]]; then
+  alias c='/data/code/cli/calculatrice/taget/relese/calculatrice'
+elif [[ -x /data/code/cli/calculatrice/target/release/calculatrice ]]; then
+  alias c='/data/code/cli/calculatrice/target/release/calculatrice'
+fi
+
+### Divers
+command -v startx >/dev/null 2>&1 && alias x='startx'
+alias q='exit'
+alias l='clear'
+alias h='herdr'
+command -v aerc >/dev/null 2>&1 && alias a='aerc'
+command -v himalaya >/dev/null 2>&1 && alias hi='RUST_LOG=error himalaya'
+alias off='sudo shutdown -h now'
+alias re='reboot'
+alias rezs='source ~/.zshrc'
+command -v bspc >/dev/null 2>&1 && alias rewm='bspc wm -r'
+[[ -x "${HOME}/.config/lemonbar/bar.sh" ]] && alias rele='pkill -f bar.sh; bash ~/.config/lemonbar/bar.sh &'
+# kanata restart: systemd or brew services
+if command -v systemctl >/dev/null 2>&1; then
+  alias reka='sudo systemctl restart kanata'
+elif command -v brew >/dev/null 2>&1; then
+  alias reka='sudo brew services restart kanata'
+fi
+# touchpad reload (Linux only)
+if [[ -d /sys/module/psmouse ]]; then
+  alias remo='sudo modprobe -r psmouse && sudo modprobe psmouse'
+fi
+command -v pactl >/dev/null 2>&1 && alias mu='pactl set-sink-mute @DEFAULT_SINK@ toggle'
+command -v trash-empty >/dev/null 2>&1 && alias rmtrash='trash-empty'
+alias mk='mkdir'
+
+# Clipboard: macOS pbcopy/pbpaste · Wayland wl-copy · X11 xclip · fallback none
+if command -v pbcopy >/dev/null 2>&1 && command -v pbpaste >/dev/null 2>&1; then
+  alias y='pwd | pbcopy'
+  alias p='cd "$(pbpaste)"'
+elif command -v wl-copy >/dev/null 2>&1 && command -v wl-paste >/dev/null 2>&1; then
+  alias y='pwd | wl-copy'
+  alias p='cd "$(wl-paste)"'
+elif command -v xclip >/dev/null 2>&1; then
+  alias y='pwd | xclip -selection clipboard'
+  alias p='cd "$(xclip -selection clipboard -o)"'
+fi
+
+### Zellij
+if command -v zellij >/dev/null 2>&1; then
+  alias z='zellij attach'
+  alias ze='zellij'
+  alias zl='zellij list-sessions'
+  alias zda='zellij delete-all-sessions'
+  alias zka='zellij kill-all-sessions'
+fi
+
+### Pie / omp (if installed)
+if command -v omp >/dev/null 2>&1; then
+  alias o='omp --no-session'
+  alias oc='omp --continue'
+  alias ol='omp --no-session --thinking=low'
+  alias om='omp --no-session --thinking=medium'
+  alias oh='omp --no-session --thinking=high'
+  alias op='omp --no-session --print'
+  alias opp='omp --no-session --print --thinking=minimal'
+  alias opl='omp --no-session --print --thinking=low'
+  alias opm='omp --no-session --print --thinking=medium'
+  alias oph='omp --no-session --print --thinking=high'
+  alias ocdh='omp --allow-home'
+fi
+
+### Podman
+if command -v podman >/dev/null 2>&1; then
+  alias pod='podman'
+  alias pps='podman ps'
+  alias ppsa='podman ps -a'
+  alias psd='podman system df'
+  alias psdv='podman system df -v'
+  alias psdf='podman system df -v'
+  alias psp='podman start postgresql'
+  alias pep='podman stop postgresql'
+  alias plp='podman logs -f postgresql'
+  alias ppco='podman exec -it postgresql psql -U steekell -d lifectl'
+  alias psh='podman start hermes && podman exec -it hermes bash'
+  alias peh='podman stop hermes'
+  alias plh='podman logs -f hermes'
+  alias pshd='podman start hermes-dashboard'
+  alias pehd='podman stop hermes-dashboard'
+  alias plhd='podman logs -f hermes-dashboard'
+fi
+
+command -v tailscale >/dev/null 2>&1 && alias ts='tailscale status'
+command -v zoxide >/dev/null 2>&1 && alias d='zoxide'
+command -v rofi >/dev/null 2>&1 && alias r='rofi -show drun &'
+if command -v brave-origin >/dev/null 2>&1; then
+  alias w='brave-origin &'
+elif command -v brave >/dev/null 2>&1; then
+  alias w='brave &'
+elif command -v open >/dev/null 2>&1; then
+  alias w='open -a "Brave Browser" 2>/dev/null || open -a Brave 2>/dev/null || true'
+fi
+
+### SSH + Zellij
+if command -v zellij >/dev/null 2>&1; then
+  function zj() {
+    ssh -t "$1" "zellij attach --create main"
+  }
+  alias ssper='zj perkel'
+fi
+
+## ==8. Fonctions
+
+### Yazi avec suivi du repertoire
+function e() {
+  if ! command -v yazi >/dev/null 2>&1; then
+    echo "yazi not installed" >&2
+    return 1
+  fi
+  local tmp cwd
+  tmp="$(mktemp)"
+  yazi --cwd-file="$tmp" "$@"
+  cwd="$(cat "$tmp" 2>/dev/null)"
+  [ -n "$cwd" ] && [ "$cwd" != "$PWD" ] && cd "$cwd"
+  rm -f "$tmp"
+}
+
+### Créer un dossier et y entrer
+function mkcd {
+  mkdir -p "$1" && cd "$1"
+}
+
+### Afficher les processus consommateurs (top 10 cpu)
+function topcpu {
+  if ps aux --sort=-%cpu >/dev/null 2>&1; then
+    ps aux --sort=-%cpu | head -11
+  else
+    # macOS / BSD: no GNU sort flag
+    ps aux | sort -nrk 3 | head -11
+  fi
+}
+
+## ==9. Plugins / sources externes
+
+### fzf : raccourcis clavier (Ctrl+T, Ctrl+R, Alt+C) — paths multi-OS
+for _fzf_kb in \
+  "${HOME}/.fzf/shell/key-bindings.zsh" \
+  /opt/homebrew/opt/fzf/shell/key-bindings.zsh \
+  /usr/local/opt/fzf/shell/key-bindings.zsh \
+  /home/linuxbrew/.linuxbrew/opt/fzf/shell/key-bindings.zsh \
+  /usr/share/fzf/key-bindings.zsh \
+  /usr/share/doc/fzf/examples/key-bindings.zsh
+do
+  if [[ -f "${_fzf_kb}" ]]; then
+    # shellcheck disable=SC1090
+    source "${_fzf_kb}"
+    break
+  fi
+done
+for _fzf_cp in \
+  "${HOME}/.fzf/shell/completion.zsh" \
+  /opt/homebrew/opt/fzf/shell/completion.zsh \
+  /usr/local/opt/fzf/shell/completion.zsh \
+  /home/linuxbrew/.linuxbrew/opt/fzf/shell/completion.zsh \
+  /usr/share/fzf/completion.zsh \
+  /usr/share/doc/fzf/examples/completion.zsh
+do
+  if [[ -f "${_fzf_cp}" ]]; then
+    # shellcheck disable=SC1090
+    source "${_fzf_cp}"
+    break
+  fi
+done
+unset _fzf_kb _fzf_cp
+
+### which-alias via fzf : Ctrl+Space
+if command -v fzf >/dev/null 2>&1; then
+  alias-widget() {
+    local selected
+    selected=$(
+      alias | sort | fzf \
+        --height 50% \
+        --reverse \
+        --border rounded \
+        --prompt ' alias> ' \
+        --preview 'echo {} | sed "s/.*=//"' \
+        --preview-window 'down:2:wrap'
+    )
+    [[ -z $selected ]] && { zle redisplay; return; }
+    LBUFFER+="${selected%%=*}"
+    zle redisplay
+  }
+  zle -N alias-widget
+  bindkey '^ ' alias-widget
+fi
+
+### scripts fzf : Ctrl+X → parcourir scripts python (si le dossier existe)
+if command -v fzf >/dev/null 2>&1 && [[ -d /data/scripts/python ]]; then
+  scripts-widget() {
+    local file base
+    base=/data/scripts/python
+    file=$(
+      find "$base" -type f | sed "s|$base/||" | sort | fzf \
+        --height 50% \
+        --reverse \
+        --border rounded \
+        --prompt ' python > ' \
+        --preview "command -v bat >/dev/null && bat --color=always --style=plain --paging=never $base/{} || cat $base/{}" \
+        --preview-window 'right:60%:wrap'
+    )
+    [[ -z $file ]] && { zle redisplay; return; }
+    LBUFFER+="python $base/$file"
+    zle redisplay
+  }
+  zle -N scripts-widget
+  bindkey '^X' scripts-widget
+fi
+
+# zoxide init (if installed)
+if command -v zoxide >/dev/null 2>&1; then
+  eval "$(zoxide init zsh)"
 fi
