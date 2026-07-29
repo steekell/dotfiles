@@ -311,13 +311,24 @@ fi
 alias ..='cd ..'
 alias ...='cd ../..'
 alias ....='cd ../../..'
-[[ -d "${HOME}/steekell" ]] && alias cds='cd ~/steekell'
-alias cdc='cd ~/.config'
-alias cdcv='cd ~/.config/nvim'
-alias cdt='cd /tmp'
-[[ -d /partage ]] && alias cdp='cd /partage'
-[[ -d /data ]] && alias cdd='cd /data'
-[[ -d /data/infra/archinstall ]] && alias cda='cd /data/infra/archinstall'
+case "$(uname -s 2>/dev/null)" in
+  Linux | Darwin | *BSD)
+    [[ -d "${HOME}/workspace" ]] && alias cdw='cd ~/workspace'
+    ;;
+  MINGW* | MSYS* | CYGWIN*)
+    alias cdw='cd z:/workspace'
+    ;;
+esac
+case "$(uname -s 2>/dev/null)" in
+  Linux | Darwin | *BSD)
+    alias cdc='cd ~/.config'
+    alias cdcv='cd ~/.config/nvim'
+    alias cdt='cd /tmp'
+    [[ -d /partage ]] && alias cdp='cd /partage'
+    [[ -d /data ]] && alias cdd='cd /data'
+    [[ -d /data/infra/archinstall ]] && alias cda='cd /data/infra/archinstall'
+    ;;
+esac
 
 ### Listing (eza if present, else ls)
 if command -v eza >/dev/null 2>&1; then
@@ -384,14 +395,28 @@ alias mk='mkdir'
 
 # Clipboard: macOS pbcopy/pbpaste · Wayland wl-copy · X11 xclip · fallback none
 if command -v pbcopy >/dev/null 2>&1 && command -v pbpaste >/dev/null 2>&1; then
-  alias y='pwd | pbcopy'
-  alias p='cd "$(pbpaste)"'
-elif command -v wl-copy >/dev/null 2>&1 && command -v wl-paste >/dev/null 2>&1; then
-  alias y='pwd | wl-copy'
-  alias p='cd "$(wl-paste)"'
-elif command -v xclip >/dev/null 2>&1; then
-  alias y='pwd | xclip -selection clipboard'
-  alias p='cd "$(xclip -selection clipboard -o)"'
+  function y { print -rn -- "$PWD" | pbcopy }
+  function p {
+    local _clipboard_path
+    _clipboard_path="$(pbpaste)"
+    [[ -n "${_clipboard_path}" ]] && builtin cd -- "${_clipboard_path}"
+  }
+elif [[ -n "${WAYLAND_DISPLAY}" ]] &&
+     command -v wl-copy >/dev/null 2>&1 &&
+     command -v wl-paste >/dev/null 2>&1; then
+  function y { print -rn -- "$PWD" | wl-copy }
+  function p {
+    local _clipboard_path
+    _clipboard_path="$(wl-paste)"
+    [[ -n "${_clipboard_path}" ]] && builtin cd -- "${_clipboard_path}"
+  }
+elif [[ -n "${DISPLAY}" ]] && command -v xclip >/dev/null 2>&1; then
+  function y { print -rn -- "$PWD" | xclip -selection clipboard }
+  function p {
+    local _clipboard_path
+    _clipboard_path="$(xclip -selection clipboard -o)"
+    [[ -n "${_clipboard_path}" ]] && builtin cd -- "${_clipboard_path}"
+  }
 fi
 
 ### Zellij
