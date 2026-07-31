@@ -310,16 +310,84 @@ ensure_font_jetbrains_mono_nerd() {
 	return 0
 }
 
+# --- AUR helper (pacman only) ---
+# kanata/herdr live only on the AUR — pacman can never resolve them.
+YAY_BOOTSTRAP_TRIED=0
+ensure_yay() {
+	[ "$PACKAGE_MANAGER" = "pacman" ] || return 1
+	command -v yay >/dev/null 2>&1 && return 0
+	[ "$YAY_BOOTSTRAP_TRIED" -eq 1 ] && return 1
+	YAY_BOOTSTRAP_TRIED=1
+
+	if [ "$(id -u)" -eq 0 ]; then
+		warn "cannot bootstrap yay as root — install manually: install AUR helper, then yay -S <pkg>"
+		return 1
+	fi
+
+	info "yay not found — bootstrapping AUR helper (yay-bin)..."
+	run_root pacman -Syu --needed --noconfirm base-devel git || {
+		warn "failed to install base-devel/git for yay bootstrap (non-fatal)"
+		return 1
+	}
+
+	build_dir="$(mktemp -d)"
+	if git clone -q https://aur.archlinux.org/yay-bin.git "${build_dir}/yay-bin" \
+		&& (cd "${build_dir}/yay-bin" && makepkg -si --noconfirm); then
+		rm -rf "$build_dir"
+		record_pkg "aur:yay-bin"
+	else
+		rm -rf "$build_dir"
+		warn "failed to bootstrap yay (non-fatal) — install AUR packages manually"
+		return 1
+	fi
+	command -v yay >/dev/null 2>&1
+}
+
+# ensure_aur_cmd <command> <manifest_suffix> <pkg> — AUR-only tools (pacman); other PMs use pm_install directly.
+ensure_aur_cmd() {
+	cmd="$1"
+	suffix="$2"
+	pkg="$3"
+
+	if command -v "$cmd" >/dev/null 2>&1; then
+		info "${cmd} already installed: $(command -v "$cmd")"
+		return 0
+	fi
+
+	if [ "$PACKAGE_MANAGER" = "pacman" ]; then
+		if ensure_yay; then
+			yay -S --needed --noconfirm "$pkg" || {
+				warn "failed to install ${cmd} via yay (non-fatal)"
+				return 1
+			}
+			record_pkg "yay:${suffix}"
+		else
+			warn "${cmd} needs the AUR — install manually: yay -S ${pkg}"
+			return 1
+		fi
+	elif ! pm_install "$suffix" "$pkg"; then
+		warn "failed to install ${cmd} (non-fatal)"
+		return 1
+	fi
+
+	if command -v "$cmd" >/dev/null 2>&1; then
+		info "${cmd} installed: $(command -v "$cmd")"
+		return 0
+	fi
+	warn "${cmd} install finished but not on PATH yet"
+	return 1
+}
+
 # Core editor + nvim companions (fzf-lua / yazi / grep)
 ensure_cmd nvim neovim neovim editors/neovim || true
 ensure_cmd yazi yazi yazi || true
 ensure_cmd fzf fzf fzf || true
 ensure_cmd rg ripgrep ripgrep || true
 # Keyboard remapper (config: ~/.config/kanata/kanata.kbd ; macOS service: sudo brew services start kanata)
-ensure_cmd kanata kanata kanata || true
+ensure_aur_cmd kanata kanata kanata || true
 # Terminal mux + herdr (formulas when available)
 ensure_cmd zellij zellij zellij || true
-ensure_cmd herdr herdr herdr || true
+ensure_aur_cmd herdr herdr herdr || true
 
 # --- zshrc companions (A+B+C) ---
 # A: core shell UX
