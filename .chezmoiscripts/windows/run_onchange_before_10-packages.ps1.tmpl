@@ -158,6 +158,11 @@ $specs = @(
     @{ Command = 'rg'; WingetId = 'BurntSushi.ripgrep.MSVC'; ChocoName = 'ripgrep'; ScoopName = 'ripgrep' }
     @{ Command = 'wezterm'; WingetId = 'wez.WezTerm'; ChocoName = 'wezterm'; ScoopName = 'wezterm' }
     @{ Command = 'zellij'; WingetId = ''; ChocoName = ''; ScoopName = 'zellij' }
+{{ if .installKanata }}
+    @{ Command = 'kanata'; WingetId = 'jtroo.kanata_gui'; ChocoName = ''; ScoopName = '' }
+{{ else }}
+    # kanata skipped (installKanata=false; chezmoi init to change)
+{{ end -}}
     # zshrc companions A+B+C (xclip/wl-clipboard = Unix only — skipped on Windows)
     @{ Command = 'git'; WingetId = 'Git.Git'; ChocoName = 'git'; ScoopName = 'git' }
     @{ Command = 'eza'; WingetId = 'eza-community.eza'; ChocoName = 'eza'; ScoopName = 'eza' }

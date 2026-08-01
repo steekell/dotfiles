@@ -3,7 +3,7 @@
 #
 # Idempotent. Override: $env:DOTFILES_REPO, $env:DOTFILES_REF, $env:CHEZMOI_BIN_DIR
 #
-#   irm https://raw.githubusercontent.com/steekell/dotfiles/v0.1.8/install.ps1 | iex
+#   irm https://raw.githubusercontent.com/steekell/dotfiles/v0.1.9/install.ps1 | iex
 #   $env:DOTFILES_REF = 'main'; irm .../install.ps1 | iex
 
 Set-StrictMode -Version Latest
@@ -11,13 +11,23 @@ $ErrorActionPreference = 'Stop'
 
 $RepoUrl = if ($env:DOTFILES_REPO) { $env:DOTFILES_REPO } else { 'https://github.com/steekell/dotfiles.git' }
 # Pin to this release by default (override: $env:DOTFILES_REF = 'main').
-$DefaultRef = 'v0.1.8'
+$DefaultRef = 'v0.1.9'
 $Ref = if ($env:DOTFILES_REF) { $env:DOTFILES_REF } else { $DefaultRef }
 $BinDir = if ($env:CHEZMOI_BIN_DIR) { $env:CHEZMOI_BIN_DIR } else {
     Join-Path $env:USERPROFILE 'bin'
 }
 
 function Write-Info([string]$Message) { Write-Host $Message }
+
+function Request-InstallKanata {
+    if ($env:DOTFILES_INSTALL_KANATA) { return }
+    $ans = Read-Host 'Install kanata (keyboard remapper)? [Y/n]'
+    if ($ans -match '^[nN]') {
+        $env:DOTFILES_INSTALL_KANATA = '0'
+    } else {
+        $env:DOTFILES_INSTALL_KANATA = '1'
+    }
+}
 
 function Ensure-SessionPath {
     # Session only — permanent user PATH is machine config (.chezmoiscripts/windows).
@@ -109,6 +119,7 @@ function Init-OrUpdate {
     & chezmoi init --apply --branch $Ref $RepoUrl
 }
 
+Request-InstallKanata
 Write-Info "dotfiles install — start chezmoi only (repo=$RepoUrl ref=$Ref)"
 Ensure-SessionPath
 Install-Chezmoi

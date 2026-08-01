@@ -11,6 +11,16 @@
 {{-   $email = promptStringOnce . "email" "Email address" $email }}
 {{- end }}
 
+{{- /* Whether to install kanata (keyboard remapper). Set by install.sh/install.ps1
+       via $DOTFILES_INSTALL_KANATA; falls back to an interactive prompt, else
+       stays installed by default (unchanged behavior). */}}
+{{- $installKanata := true }}
+{{- if env "DOTFILES_INSTALL_KANATA" }}
+{{-   $installKanata = eq (env "DOTFILES_INSTALL_KANATA") "1" }}
+{{- else if stdinIsATTY }}
+{{-   $installKanata = promptBoolOnce . "installKanata" "Install kanata (keyboard remapper)?" true }}
+{{- end }}
+
 {{- /* Stable machine facts for all templates/scripts: .system.* */}}
 {{- $distro := "" }}
 {{- $distroLike := "" }}
@@ -24,6 +34,7 @@
 [data]
     name = {{ $name | quote }}
     email = {{ $email | quote }}
+    installKanata = {{ $installKanata }}
 
 [data.system]
     os = {{ .chezmoi.os | quote }}

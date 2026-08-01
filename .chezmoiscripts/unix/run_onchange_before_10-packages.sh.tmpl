@@ -383,8 +383,12 @@ ensure_cmd nvim neovim neovim editors/neovim || true
 ensure_cmd yazi yazi yazi || true
 ensure_cmd fzf fzf fzf || true
 ensure_cmd rg ripgrep ripgrep || true
+{{- if .installKanata }}
 # Keyboard remapper (config: ~/.config/kanata/kanata.kbd ; macOS service: sudo brew services start kanata)
 ensure_aur_cmd kanata kanata kanata || true
+{{- else }}
+info "kanata skipped (installKanata=false; chezmoi init to change)"
+{{- end }}
 # Terminal mux + herdr (formulas when available)
 ensure_cmd zellij zellij zellij || true
 ensure_aur_cmd herdr herdr herdr || true
