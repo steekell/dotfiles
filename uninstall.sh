@@ -14,8 +14,9 @@ usage() {
 	cat <<'EOF'
 Usage: uninstall.sh [--chezmoi-only | --purge] [-y|--yes] [-h|--help]
 
-  (default)       Remove managed targets and setup artefacts created by this
-                  project. Keeps chezmoi binary, source dir, and user data.
+  (default)       Remove managed config files, now-empty directories they
+                  created, and packages installed by setup (packages.manifest).
+                  Keeps chezmoi binary, source dir, and user data.
   --chezmoi-only  Remove chezmoi source + config (+ binary if under ~/.local/bin).
                   Does NOT remove files already applied in $HOME.
   --purge         default cleanup + chezmoi-only (full teardown of this setup).
@@ -46,6 +47,17 @@ done
 
 info() { printf '%s\n' "$*"; }
 warn() { printf 'warning: %s\n' "$*" >&2; }
+
+run_root() {
+	if [ "$(id -u)" -eq 0 ]; then
+		"$@"
+	elif command -v sudo >/dev/null 2>&1; then
+		sudo "$@"
+	else
+		warn "need root for: $*"
+		return 1
+	fi
+}
 
 STATE_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles"
 CHEZMOI_CFG="${XDG_CONFIG_HOME:-$HOME/.config}/chezmoi"
@@ -79,26 +91,38 @@ remove_managed_targets() {
 	fi
 	resolve_source
 	info "removing chezmoi-managed targets..."
-	# Files and symlinks only; do not wipe whole directories blindly.
-	# --path-style=absolute needs recent chezmoi; fall back to relative.
-	list=$(chezmoi managed --include=files,symlinks 2>/dev/null || true)
-	if [ -z "$list" ]; then
+
+	files=$(chezmoi managed --include=files,symlinks 2>/dev/null || true)
+	if [ -n "$files" ]; then
+		printf '%s\n' "$files" | while IFS= read -r rel || [ -n "$rel" ]; do
+			[ -z "$rel" ] && continue
+			case "$rel" in
+				/*) target="$rel" ;;
+				*) target="${HOME}/${rel}" ;;
+			esac
+			if [ -L "$target" ] || [ -f "$target" ]; then
+				rm -f "$target" && info "  removed $target" || warn "could not remove $target"
+			fi
+		done
+	else
 		info "no managed files/symlinks reported"
-		return 0
 	fi
-	printf '%s\n' "$list" | while IFS= read -r rel || [ -n "$rel" ]; do
-		[ -z "$rel" ] && continue
-		case "$rel" in
-			/*) target="$rel" ;;
-			*) target="${HOME}/${rel}" ;;
-		esac
-		if [ -L "$target" ] || [ -f "$target" ]; then
-			rm -f "$target" && info "  removed $target" || warn "could not remove $target"
-		elif [ -d "$target" ]; then
-			# Only remove empty dirs that chezmoi managed as dirs — skip non-empty.
-			rmdir "$target" 2>/dev/null && info "  removed empty dir $target" || true
-		fi
-	done
+
+	# Directories chezmoi created for those files/symlinks. Never rm -rf: only
+	# rmdir once empty, deepest first, so leftover unmanaged content is kept.
+	dirs=$(chezmoi managed --include=dirs 2>/dev/null || true)
+	[ -n "$dirs" ] || return 0
+	printf '%s\n' "$dirs" | awk '{ n = gsub(/\//, "/"); print n, $0 }' |
+		sort -rn -k1,1 | cut -d' ' -f2- |
+		while IFS= read -r rel || [ -n "$rel" ]; do
+			[ -z "$rel" ] && continue
+			case "$rel" in
+				/*) target="$rel" ;;
+				*) target="${HOME}/${rel}" ;;
+			esac
+			[ -d "$target" ] || continue
+			rmdir "$target" 2>/dev/null && info "  removed empty dir $target" || warn "kept non-empty dir $target (contains unmanaged files)"
+		done
 }
 
 remove_artefacts() {
@@ -110,12 +134,51 @@ remove_artefacts() {
 	# Future: remove service units / wrapper bins registered by bootstrap.
 }
 
+# Manifest lines written by run_onchange_before_10-packages.sh.tmpl:
+#   <pm>:<suffix>[:<pkg>]   (older entries lack the <pkg> field; suffix is used instead)
 remove_packages_installed_by_setup() {
-	# v0.1.0 bootstrap installs no packages. When it does, read a manifest
-	# from $STATE_DIR and uninstall only those entries.
-	if [ -f "${STATE_DIR}/packages.manifest" ]; then
-		warn "packages.manifest present but automatic package removal is not implemented yet"
-	fi
+	manifest="${STATE_DIR}/packages.manifest"
+	[ -f "$manifest" ] || return 0
+
+	info "removing packages installed by setup..."
+	tmp_dir=$(mktemp -d)
+
+	while IFS= read -r line || [ -n "$line" ]; do
+		case "$line" in
+			'' | '#'*) continue ;;
+		esac
+		pm=${line%%:*}
+		rest=${line#*:}
+		suffix=${rest%%:*}
+		if [ "$rest" != "$suffix" ]; then
+			pkg=${rest#*:}
+		else
+			pkg=""
+		fi
+		[ -z "$pkg" ] && pkg="$suffix"
+		printf '%s\n' "$pkg" >>"${tmp_dir}/${pm}"
+	done <"$manifest"
+
+	for f in "${tmp_dir}"/*; do
+		[ -e "$f" ] || continue
+		pm=$(basename "$f")
+		pkgs=$(sort -u "$f" | tr '\n' ' ')
+		[ -n "${pkgs% }" ] || continue
+		# shellcheck disable=SC2086
+		case "$pm" in
+			brew) brew uninstall $pkgs || warn "brew uninstall failed for: $pkgs" ;;
+			brew-cask) brew uninstall --cask $pkgs || warn "brew uninstall --cask failed for: $pkgs" ;;
+			apt) run_root apt-get remove -y $pkgs || warn "apt-get remove failed for: $pkgs" ;;
+			dnf) run_root dnf remove -y $pkgs || warn "dnf remove failed for: $pkgs" ;;
+			pacman | yay | aur) run_root pacman -Rns --noconfirm $pkgs || warn "pacman -Rns failed for: $pkgs" ;;
+			zypper) run_root zypper --non-interactive remove $pkgs || warn "zypper remove failed for: $pkgs" ;;
+			apk) run_root apk del $pkgs || warn "apk del failed for: $pkgs" ;;
+			pkg) run_root pkg delete -y $pkgs || warn "pkg delete failed for: $pkgs" ;;
+			*) warn "unknown package manager '${pm}' in manifest — remove manually: $pkgs" ;;
+		esac
+	done
+
+	rm -rf "$tmp_dir"
 }
 
 remove_chezmoi_only() {

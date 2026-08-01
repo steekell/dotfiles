@@ -91,10 +91,10 @@ pm_install() {
 		brew)
 			if [ "${BREW_CASK:-0}" = "1" ]; then
 				brew install --cask "$pkg" || return 1
-				record_pkg "brew-cask:${suffix}"
+				record_pkg "brew-cask:${suffix}:${pkg}"
 			else
 				brew install "$pkg" || return 1
-				record_pkg "brew:${suffix}"
+				record_pkg "brew:${suffix}:${pkg}"
 			fi
 			;;
 		apt)
@@ -102,56 +102,56 @@ pm_install() {
 			run_root apt-get install -y "$pkg" || {
 				# try alternates
 				for alt in "$@"; do
-					run_root apt-get install -y "$alt" && record_pkg "apt:${suffix}" && return 0
+					run_root apt-get install -y "$alt" && record_pkg "apt:${suffix}:${alt}" && return 0
 				done
 				return 1
 			}
-			record_pkg "apt:${suffix}"
+			record_pkg "apt:${suffix}:${pkg}"
 			;;
 		dnf)
 			run_root dnf install -y "$pkg" || {
 				for alt in "$@"; do
-					run_root dnf install -y "$alt" && record_pkg "dnf:${suffix}" && return 0
+					run_root dnf install -y "$alt" && record_pkg "dnf:${suffix}:${alt}" && return 0
 				done
 				return 1
 			}
-			record_pkg "dnf:${suffix}"
+			record_pkg "dnf:${suffix}:${pkg}"
 			;;
 		pacman)
 			run_root pacman -Syu --needed --noconfirm "$pkg" || {
 				for alt in "$@"; do
-					run_root pacman -Syu --needed --noconfirm "$alt" && record_pkg "pacman:${suffix}" && return 0
+					run_root pacman -Syu --needed --noconfirm "$alt" && record_pkg "pacman:${suffix}:${alt}" && return 0
 				done
 				return 1
 			}
-			record_pkg "pacman:${suffix}"
+			record_pkg "pacman:${suffix}:${pkg}"
 			;;
 		zypper)
 			run_root zypper --non-interactive install "$pkg" || {
 				for alt in "$@"; do
-					run_root zypper --non-interactive install "$alt" && record_pkg "zypper:${suffix}" && return 0
+					run_root zypper --non-interactive install "$alt" && record_pkg "zypper:${suffix}:${alt}" && return 0
 				done
 				return 1
 			}
-			record_pkg "zypper:${suffix}"
+			record_pkg "zypper:${suffix}:${pkg}"
 			;;
 		apk)
 			run_root apk add --no-cache "$pkg" || {
 				for alt in "$@"; do
-					run_root apk add --no-cache "$alt" && record_pkg "apk:${suffix}" && return 0
+					run_root apk add --no-cache "$alt" && record_pkg "apk:${suffix}:${alt}" && return 0
 				done
 				return 1
 			}
-			record_pkg "apk:${suffix}"
+			record_pkg "apk:${suffix}:${pkg}"
 			;;
 		pkg)
 			run_root pkg install -y "$pkg" || {
 				for alt in "$@"; do
-					run_root pkg install -y "$alt" && record_pkg "pkg:${suffix}" && return 0
+					run_root pkg install -y "$alt" && record_pkg "pkg:${suffix}:${alt}" && return 0
 				done
 				return 1
 			}
-			record_pkg "pkg:${suffix}"
+			record_pkg "pkg:${suffix}:${pkg}"
 			;;
 		unknown)
 			warn "no supported package manager — install ${suffix} manually"
@@ -178,7 +178,7 @@ ensure_cmd() {
 		brew|apt|dnf|pacman|zypper|apk|pkg)
 			pkg="$1"
 			PACKAGE_QUEUE="${PACKAGE_QUEUE} ${pkg}"
-			MANIFEST_QUEUE="${MANIFEST_QUEUE} ${PACKAGE_MANAGER}:${suffix}"
+			MANIFEST_QUEUE="${MANIFEST_QUEUE} ${PACKAGE_MANAGER}:${suffix}:${pkg}"
 			info "${cmd} not found — queued ${PACKAGE_MANAGER} package ${pkg}"
 			return 0
 			;;
@@ -360,7 +360,7 @@ ensure_aur_cmd() {
 				warn "failed to install ${cmd} via yay (non-fatal)"
 				return 1
 			}
-			record_pkg "yay:${suffix}"
+			record_pkg "yay:${suffix}:${pkg}"
 		else
 			warn "${cmd} needs the AUR — install manually: yay -S ${pkg}"
 			return 1

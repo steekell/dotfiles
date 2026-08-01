@@ -45,6 +45,14 @@ function Stop-SetupServices {
     # Placeholder for future services created by bootstrap scripts.
 }
 
+function Resolve-ManagedPath([string]$Rel) {
+    $Rel = "$Rel".Trim()
+    if ($Rel -match '^[A-Za-z]:\\' -or $Rel.StartsWith('\\') -or $Rel.StartsWith('/')) {
+        return $Rel
+    }
+    return Join-Path $env:USERPROFILE ($Rel -replace '/', '\')
+}
+
 function Remove-ManagedTargets {
     if (-not (Test-Chezmoi)) {
         Write-Warn 'chezmoi not on PATH — skip managed target removal'
@@ -52,40 +60,40 @@ function Remove-ManagedTargets {
     }
     Resolve-Source
     Write-Info 'removing chezmoi-managed targets...'
-    $list = @()
-    try {
-        $list = & chezmoi managed --include=files,symlinks 2>$null
-    } catch {
-        $list = @()
-    }
-    if (-not $list) {
+
+    $files = @()
+    try { $files = & chezmoi managed --include=files,symlinks 2>$null } catch { $files = @() }
+    if (-not $files) {
         Write-Info 'no managed files/symlinks reported'
-        return
-    }
-    foreach ($rel in $list) {
-        if (-not $rel) { continue }
-        $rel = "$rel".Trim()
-        if ($rel -match '^[A-Za-z]:\\' -or $rel.StartsWith('\\')) {
-            $target = $rel
-        } elseif ($rel.StartsWith('/')) {
-            # WSL-style path unlikely on native Windows chezmoi
-            $target = $rel
-        } else {
-            $target = Join-Path $env:USERPROFILE ($rel -replace '/', '\')
-        }
-        if (Test-Path -LiteralPath $target) {
-            $item = Get-Item -LiteralPath $target -Force
-            if (-not $item.PSIsContainer) {
-                Remove-Item -LiteralPath $target -Force
-                Write-Info "  removed $target"
-            } else {
-                try {
-                    Remove-Item -LiteralPath $target -Force -ErrorAction Stop
-                    Write-Info "  removed dir $target"
-                } catch {
-                    # non-empty — leave it
+    } else {
+        foreach ($rel in $files) {
+            if (-not $rel) { continue }
+            $target = Resolve-ManagedPath $rel
+            if (Test-Path -LiteralPath $target) {
+                $item = Get-Item -LiteralPath $target -Force
+                if (-not $item.PSIsContainer) {
+                    Remove-Item -LiteralPath $target -Force
+                    Write-Info "  removed $target"
                 }
             }
+        }
+    }
+
+    # Directories chezmoi created for those files/symlinks. Never -Recurse:
+    # only remove once empty, deepest first, so unmanaged content is kept.
+    $dirs = @()
+    try { $dirs = & chezmoi managed --include=dirs 2>$null } catch { $dirs = @() }
+    if (-not $dirs) { return }
+    $sorted = $dirs | Where-Object { $_ } |
+        Sort-Object -Descending -Property @{ Expression = { ("$_" -split '[\\/]').Count } }
+    foreach ($rel in $sorted) {
+        $target = Resolve-ManagedPath $rel
+        if (-not (Test-Path -LiteralPath $target)) { continue }
+        try {
+            Remove-Item -LiteralPath $target -Force -ErrorAction Stop
+            Write-Info "  removed empty dir $target"
+        } catch {
+            Write-Warn "kept non-empty dir $target (contains unmanaged files)"
         }
     }
 }
@@ -100,8 +108,32 @@ function Remove-Artefacts {
 
 function Remove-PackagesFromSetup {
     $manifest = Join-Path $StateDir 'packages.manifest'
-    if (Test-Path -LiteralPath $manifest) {
-        Write-Warn 'packages.manifest present but automatic package removal is not implemented yet'
+    if (-not (Test-Path -LiteralPath $manifest)) { return }
+
+    Write-Info 'removing packages installed by setup...'
+    $lines = Get-Content -LiteralPath $manifest | Where-Object { $_ -and -not $_.StartsWith('#') }
+    foreach ($line in $lines) {
+        $parts = $line.Split(':', 2)
+        if ($parts.Count -lt 2) { continue }
+        $pm = $parts[0]
+        $id = $parts[1]
+        switch ($pm) {
+            'winget' {
+                & winget uninstall --id $id -e --silent 2>$null
+                if ($LASTEXITCODE -ne 0) { Write-Warn "winget uninstall failed for: $id" }
+            }
+            'choco' {
+                & choco uninstall $id -y 2>$null
+                if ($LASTEXITCODE -ne 0) { Write-Warn "choco uninstall failed for: $id" }
+            }
+            'scoop' {
+                & scoop uninstall $id 2>$null
+                if ($LASTEXITCODE -ne 0) { Write-Warn "scoop uninstall failed for: $id" }
+            }
+            default {
+                Write-Warn "unknown package source '$pm' in manifest — remove manually: $id"
+            }
+        }
     }
 }
 
