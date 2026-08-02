@@ -457,15 +457,15 @@ ensure_cmd typescript-language-server typescript-language-server typescript-lang
 ensure_cmd vscode-json-languageserver vscode-json-languageserver vscode-json-languageserver || true
 ensure_cmd marksman marksman marksman || true
 
-# 6. Documentation and terminal help
+# 6. Documentation terminal help and visualiser
 ensure_cmd man man-db man-db || true
 ensure_cmd tldr tealdeer tealdeer || true
+ensure_cmd glow glow glow || true
 
 # 7. Node.js and JavaScript tooling (nodejs-lts-jod provides Node.js v22 on Arch)
 ensure_cmd node nodejs-lts-jod nodejs || true
 ensure_cmd npm npm npm || true
 ensure_cmd pnpm pnpm pnpm || true
-
 
 # Install all packages queued by the categorized ensure_cmd calls above.
 flush_packages || true
