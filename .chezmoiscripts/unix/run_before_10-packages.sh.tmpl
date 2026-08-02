@@ -469,7 +469,11 @@ ensure_cmd bash-language-server bash-language-server bash-language-server || tru
 ensure_cmd lua-language-server lua-language-server lua-language-server || true
 ensure_cmd pyright pyright pyright || true
 ensure_cmd typescript-language-server typescript-language-server typescript-language-server || true
-ensure_cmd vscode-json-languageserver vscode-json-languageserver vscode-json-languageserver || true
+if [ "$PACKAGE_MANAGER" = "brew" ]; then
+	ensure_cmd vscode-json-languageserver vscode-json-languageserver vscode-langservers-extracted || true
+else
+	ensure_cmd vscode-json-languageserver vscode-json-languageserver vscode-json-languageserver || true
+fi
 ensure_cmd marksman marksman marksman || true
 
 # 6. Documentation terminal help and visualiser
@@ -477,8 +481,13 @@ ensure_cmd man man-db man-db || true
 ensure_cmd tldr tealdeer tealdeer || true
 ensure_cmd glow glow glow || true
 
-# 7. Node.js and JavaScript tooling (nodejs-lts-jod provides Node.js v22 on Arch)
-ensure_cmd node nodejs-lts-jod nodejs || true
+# 7. Node.js and JavaScript tooling
+# Homebrew uses the versioned `node@22` formula.
+if [ "$PACKAGE_MANAGER" = "brew" ]; then
+	ensure_cmd node node node@22 || true
+else
+	ensure_cmd node nodejs-lts-jod nodejs || true
+fi
 ensure_cmd npm npm npm || true
 ensure_cmd pnpm pnpm pnpm || true
 
