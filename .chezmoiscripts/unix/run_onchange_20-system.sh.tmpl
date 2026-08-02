@@ -3,7 +3,7 @@
 # Uses stable .system.* ; not for package installs (see 10-packages).
 set -eu
 
-info() { printf 'system(30): %s\n' "$*"; }
+info() { printf 'system(20): %s\n' "$*"; }
 
 os="{{ if and (hasKey . "system") (hasKey .system "os") }}{{ .system.os }}{{ else }}{{ .chezmoi.os }}{{ end }}"
 arch="{{ if and (hasKey . "system") (hasKey .system "arch") }}{{ .system.arch }}{{ else }}{{ .chezmoi.arch }}{{ end }}"

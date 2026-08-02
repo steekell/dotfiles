@@ -2,7 +2,7 @@
 $ErrorActionPreference = 'Stop'
 
 function Write-SysInfo([string]$Message) {
-    Write-Host "system(30): $Message"
+    Write-Host "system(20): $Message"
 }
 
 $os = '{{ if and (hasKey . "system") (hasKey .system "os") }}{{ .system.os }}{{ else }}{{ .chezmoi.os }}{{ end }}'
