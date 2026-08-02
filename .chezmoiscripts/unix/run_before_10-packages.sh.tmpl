@@ -447,7 +447,12 @@ ensure_cmd which which which || true
 # 4. Files, archives, transfer, backup, and trash
 ensure_cmd yazi yazi yazi || true
 ensure_cmd mc mc mc || true
-ensure_cmd unrar unrar unrar || true
+# Homebrew provides `unar` rather than the Linux `unrar` formula.
+if [ "$PACKAGE_MANAGER" = "brew" ]; then
+	ensure_cmd unar unar unar || true
+else
+	ensure_cmd unrar unrar unrar || true
+fi
 ensure_cmd unzip unzip unzip || true
 ensure_cmd zip zip zip || true
 ensure_cmd 7zz 7zip 7zip || true
