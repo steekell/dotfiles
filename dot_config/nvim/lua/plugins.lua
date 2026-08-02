@@ -27,6 +27,15 @@ vim.api.nvim_create_autocmd("PackChanged", {
 })
 
 require("nvim-treesitter").setup()
+-- Installer automatiquement le parser KDL utilisé par la configuration.
+if #vim.api.nvim_get_runtime_file("parser/kdl.*", true) == 0 then
+  local ok, err = pcall(function()
+    require("nvim-treesitter.install").install({ "kdl" }, { summary = true })
+  end)
+  if not ok then
+    vim.notify("treesitter: impossible d'installer le parser kdl: " .. err, vim.log.levels.WARN)
+  end
+end
 -- Highlight for host languages + chezmoi *.tmpl (mapped in autocmds.lua)
 -- Filetype → treesitter language when names differ
 local ts_lang = {
@@ -40,7 +49,7 @@ vim.api.nvim_create_autocmd("FileType", {
   pattern = {
     "lua", "python", "bash", "zsh", "sh",
     "toml", "yaml", "json", "markdown", "ps1", "kdl", "lisp",
-    "gitconfig", "sshconfig",
+    "gitconfig",
   },
   callback = function(ev)
     local lang = ts_lang[ev.match]
