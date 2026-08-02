@@ -216,6 +216,8 @@ flush_packages() {
 	for item in $MANIFEST_QUEUE; do
 		record_pkg "$item"
 	done
+	PACKAGE_QUEUE=""
+	MANIFEST_QUEUE=""
 }
 
 # ensure_brew_cask <command_or_label> <manifest_suffix> <cask> — brew cask only
@@ -378,26 +380,34 @@ ensure_aur_cmd() {
 	return 1
 }
 
-# Core editor + nvim companions (fzf-lua / yazi / grep)
-ensure_cmd nvim neovim neovim editors/neovim || true
-ensure_cmd yazi yazi yazi || true
-ensure_cmd fzf fzf fzf || true
-ensure_cmd rg ripgrep ripgrep || true
-{{- if .installKanata }}
-# Keyboard remapper (config: ~/.config/kanata/kanata.kbd ; macOS service: sudo brew services start kanata)
-ensure_aur_cmd kanata kanata kanata || true
-{{- else }}
-info "kanata skipped (installKanata=false; chezmoi init to change)"
-{{- end }}
-# Terminal mux + herdr (formulas when available)
+# Packages
+
+# 1. Terminal, shell, and desktop interaction
+
+# Terminal GUI / fonts (brew casks; Linux falls back to ensure_cmd via pm after queue)
+# wezterm: brew cask; Linux package name usually wezterm
+if ! ensure_brew_cask wezterm wezterm wezterm; then
+	ensure_cmd wezterm wezterm wezterm || true
+fi
+
+# Clipboard: skip macOS (pbcopy); on other Unix try both toolkits (non-fatal).
+case "${os}" in
+	darwin | windows) ;;
+	*)
+		ensure_cmd xclip xclip xclip || true
+		ensure_cmd wl-copy wl-clipboard wl-clipboard || true
+		;;
+esac
+ensure_font_jetbrains_mono_nerd || true
+
+ensure_cmd bash bash bash || true
+ensure_cmd zsh zsh zsh || true
+ensure_cmd nushell nu nushell nushell || true
 ensure_cmd zellij zellij zellij || true
 ensure_aur_cmd herdr herdr herdr || true
-
-# --- zshrc companions (A+B+C) ---
-# A: core shell UX
-ensure_cmd git git git || true
 ensure_cmd eza eza eza || true
-# bat: Debian/Ubuntu often ship `batcat` binary
+ensure_cmd zoxide zoxide zoxide || true
+# Debian/Ubuntu often ship `batcat` instead of `bat`.
 if command -v bat >/dev/null 2>&1 || command -v batcat >/dev/null 2>&1; then
 	if command -v bat >/dev/null 2>&1; then
 		info "bat already installed: $(command -v bat)"
@@ -407,28 +417,55 @@ if command -v bat >/dev/null 2>&1 || command -v batcat >/dev/null 2>&1; then
 else
 	ensure_cmd bat bat bat || true
 fi
-ensure_cmd zoxide zoxide zoxide || true
-# B: git TUIs
+ensure_cmd less less less || true
+ensure_cmd btop btop btop || true
+ensure_cmd ncdu ncdu ncdu || true
+
+# 2. Git and development tools
+ensure_cmd git git git || true
+ensure_cmd gh github-cli github-cli gh || true
 ensure_cmd lazygit lazygit lazygit || true
 ensure_cmd gitui gitui gitui || true
-# C: trash + tree-sitter CLI (nvim parsers) + Linux clipboard
+ensure_cmd tig tig tig || true
+
+# 3. Search, navigation, and package utilities
+ensure_cmd grep grep grep || true
+ensure_cmd fzf fzf fzf || true
+ensure_cmd rg ripgrep ripgrep || true
+ensure_cmd which which which || true
+
+# 4. Files, archives, transfer, backup, and trash
+ensure_cmd yazi yazi yazi || true
+ensure_cmd mc mc mc || true
+ensure_cmd unrar unrar unrar || true
+ensure_cmd unzip unzip unzip || true
+ensure_cmd zip zip zip || true
+ensure_cmd 7zz 7zip 7zip || true
+ensure_cmd wget wget wget || true
+ensure_cmd curl curl curl || true
+ensure_cmd rsync rsync rsync || true
+ensure_cmd restic restic restic || true
 ensure_cmd trash-empty trash-cli trash-cli || true
+
+# 5. Nvim
+ensure_cmd nvim neovim neovim editors/neovim || true
 ensure_cmd tree-sitter tree-sitter-cli tree-sitter-cli tree-sitter || true
-# Clipboard: skip macOS (pbcopy); on other Unix try both toolkits (non-fatal)
-case "${os}" in
-	darwin | windows) ;;
-	*)
-		ensure_cmd xclip xclip xclip || true
-		ensure_cmd wl-copy wl-clipboard wl-clipboard || true
-		;;
-esac
+ensure_cmd bash-language-server bash-language-server bash-language-server || true
+ensure_cmd lua-language-server lua-language-server lua-language-server || true
+ensure_cmd pyright pyright pyright || true
+ensure_cmd typescript-language-server typescript-language-server typescript-language-server || true
+ensure_cmd vscode-json-languageserver vscode-json-languageserver vscode-json-languageserver || true
+ensure_cmd marksman marksman marksman || true
 
+# 6. Documentation and terminal help
+ensure_cmd man man-db man-db || true
+ensure_cmd tldr tealdeer tealdeer || true
+
+# 7. Node.js and JavaScript tooling (nodejs-lts-jod provides Node.js v22 on Arch)
+ensure_cmd node nodejs-lts-jod nodejs || true
+ensure_cmd npm npm npm || true
+ensure_cmd pnpm pnpm pnpm || true
+
+
+# Install all packages queued by the categorized ensure_cmd calls above.
 flush_packages || true
-
-# Terminal GUI / fonts (brew casks; Linux falls back to ensure_cmd via pm after queue)
-# wezterm: brew cask; Linux package name usually wezterm
-if ! ensure_brew_cask wezterm wezterm wezterm; then
-	ensure_cmd wezterm wezterm wezterm || true
-	flush_packages || true
-fi
-ensure_font_jetbrains_mono_nerd || true

@@ -4,13 +4,13 @@
 #
 # Idempotent. Override: DOTFILES_REPO, DOTFILES_REF, CHEZMOI_BIN_DIR
 #
-#   curl -fsSL https://raw.githubusercontent.com/steekell/dotfiles/v0.1.10/install.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/steekell/dotfiles/v0.1.11/install.sh | sh
 #   DOTFILES_REF=main curl -fsSL .../install.sh | sh
 set -eu
 
 REPO_URL="${DOTFILES_REPO:-https://github.com/steekell/dotfiles.git}"
 # Pin to this release by default (override: DOTFILES_REF=main).
-DEFAULT_REF="v0.1.10"
+DEFAULT_REF="v0.1.11"
 REF="${DOTFILES_REF:-$DEFAULT_REF}"
 BIN_DIR="${CHEZMOI_BIN_DIR:-$HOME/.local/bin}"
 export PATH="${BIN_DIR}:${PATH}"
@@ -24,14 +24,14 @@ ask_install_kanata() {
 	fi
 	# /dev/tty may exist but be unopenable (no controlling terminal, e.g. some
 	# CI/containers, or curl|sh with stdin already consumed) — fall back safely.
-	if { printf 'Install kanata (keyboard remapper)? [Y/n] ' >/dev/tty && read -r ans </dev/tty; } 2>/dev/null; then
+	if { printf 'Install kanata (keyboard remapper)? [y/N] ' >/dev/tty && read -r ans </dev/tty; } 2>/dev/null; then
 		case "$ans" in
-			n | N | no | NO) DOTFILES_INSTALL_KANATA=0 ;;
-			*) DOTFILES_INSTALL_KANATA=1 ;;
+			y | Y | yes | YES) DOTFILES_INSTALL_KANATA=1 ;;
+			*) DOTFILES_INSTALL_KANATA=0 ;;
 		esac
 	else
-		# Non-interactive: keep current default (installed).
-		DOTFILES_INSTALL_KANATA=1
+		# Non-interactive: do not install unless explicitly requested.
+		DOTFILES_INSTALL_KANATA=0
 	fi
 	export DOTFILES_INSTALL_KANATA
 }
