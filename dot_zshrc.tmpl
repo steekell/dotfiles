@@ -303,7 +303,8 @@ if command -v chezmoi >/dev/null 2>&1; then
   alias cmcd='chezmoi cd'
   alias cmad='chezmoi add'
   alias cme='chezmoi edit'
-  alias cmd='chezmoi diff'
+  alias cmd='chezmoi diff --exclude=scripts'
+  alias cmds='chezmoi diff'
   alias cmap='chezmoi apply'
 fi
 
