@@ -36,7 +36,7 @@ Dotfiles gérés avec [chezmoi](https://www.chezmoi.io/), installables en une li
 ### Unix (Linux / macOS / BSD / WSL)
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/steekell/dotfiles/v0.1.15/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/steekell/dotfiles/v0.1.16/install.sh | sh
 ```
 
 Branche `main` (dev) :
@@ -48,7 +48,7 @@ DOTFILES_REF=main curl -fsSL https://raw.githubusercontent.com/steekell/dotfiles
 ### Windows (PowerShell)
 
 ```powershell
-irm https://raw.githubusercontent.com/steekell/dotfiles/v0.1.15/install.ps1 | iex
+irm https://raw.githubusercontent.com/steekell/dotfiles/v0.1.16/install.ps1 | iex
 ```
 
 Branche `main` :
@@ -63,7 +63,7 @@ irm https://raw.githubusercontent.com/steekell/dotfiles/main/install.ps1 | iex
 | Variable | Défaut | Rôle |
 |---|---|---|
 | `DOTFILES_REPO` | `https://github.com/steekell/dotfiles.git` | URL du dépôt |
-| `DOTFILES_REF` | `v0.1.15` | Branche ou tag git (override pour `main` en dev) |
+| `DOTFILES_REF` | `v0.1.16` | Branche ou tag git (override pour `main` en dev) |
 | `CHEZMOI_BIN_DIR` | `~/.local/bin` (Unix) / `%USERPROFILE%\bin` (Windows) | Binaire chezmoi si absent |
 
 ## Uninstall
@@ -189,7 +189,7 @@ Configs herdr/zellij = **origin upstream** (pas de custom maison). WezTerm = con
 - Config : `~/.config/kanata/kanata.kbd` (managée ; source `kanata.kbd.tmpl`, branche macOS vs Linux/Windows)
 - Binaire : installé par `10-packages` si absent (`kanata` via brew/apt/…)
 - **macOS** dépendances hors brew (manuel, une fois) :
-  1. Driver **Karabiner-DriverKit-VirtualHIDDevice v0.1.15** (pkg pqrs ; pas un brew package kanata)
+  1. Driver **Karabiner-DriverKit-VirtualHIDDevice v0.1.16** (pkg pqrs ; pas un brew package kanata)
   2. Activer l’extension : **Réglages → Général → Ouverture et extensions → Extensions de pilotes** → `org.pqrs.Karabiner-DriverKit-VirtualHIDDevice`
   3. Daemon VirtualHID (LaunchDaemon `org.pqrs.Karabiner-VirtualHIDDevice-Daemon` si pas Karabiner-Elements)
   4. Permissions pour le binaire `/opt/homebrew/Cellar/kanata/*/bin/kanata` :

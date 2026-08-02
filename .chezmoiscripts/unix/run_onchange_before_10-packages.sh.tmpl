@@ -13,6 +13,15 @@ home="{{ .chezmoi.homeDir }}"
 state_dir="${home}/.config/dotfiles"
 manifest="${state_dir}/packages.manifest"
 
+# Homebrew may be installed outside the PATH used by chezmoi (especially on macOS).
+if [ "$os" = "darwin" ]; then
+	if [ -x /opt/homebrew/bin/brew ]; then
+		eval "$(/opt/homebrew/bin/brew shellenv)"
+	elif [ -x /usr/local/bin/brew ]; then
+		eval "$(/usr/local/bin/brew shellenv)"
+	fi
+fi
+
 detect_package_manager() {
 	if command -v brew >/dev/null 2>&1; then
 		printf '%s\n' brew
