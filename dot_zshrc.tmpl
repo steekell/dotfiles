@@ -570,10 +570,10 @@ if command -v fzf >/dev/null 2>&1; then
 fi
 
 ### scripts fzf : Ctrl+X → parcourir scripts python (si le dossier existe)
-if command -v fzf >/dev/null 2>&1 && [[ -d /data/scripts/python ]]; then
+if command -v fzf >/dev/null 2>&1 && [[ -d "$HOME/workspace/scripts/python" ]]; then
   scripts-widget() {
     local file base
-    base=/data/scripts/python
+    base="$HOME/workspace/scripts/python"
     file=$(
       find "$base" -type f | sed "s|$base/||" | sort | fzf \
         --height 50% \
