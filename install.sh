@@ -4,13 +4,13 @@
 #
 # Idempotent. Override: DOTFILES_REPO, DOTFILES_REF, CHEZMOI_BIN_DIR
 #
-#   curl -fsSL https://raw.githubusercontent.com/steekell/dotfiles/v0.1.25/install.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/steekell/dotfiles/v0.1.26/install.sh | sh
 #   DOTFILES_REF=main curl -fsSL .../install.sh | sh
 set -eu
 
 REPO_URL="${DOTFILES_REPO:-https://github.com/steekell/dotfiles.git}"
 # Pin to this release by default (override: DOTFILES_REF=main).
-DEFAULT_REF="v0.1.25"
+DEFAULT_REF="v0.1.26"
 REF="${DOTFILES_REF:-$DEFAULT_REF}"
 BIN_DIR="${CHEZMOI_BIN_DIR:-$HOME/.local/bin}"
 export PATH="${BIN_DIR}:${PATH}"
@@ -84,10 +84,7 @@ init_or_update() {
 				git -C "$sp" remote add origin "$REPO_URL" ||
 					die "cannot add origin remote in ${sp}"
 			fi
-			if ! git \
-				-c 'url.https://github.com/.insteadOf=git@github.com:' \
-				-c 'url.https://github.com/.insteadOf=ssh://git@github.com/' \
-				-c 'url.https://github.com/.insteadOf=git+ssh://git@github.com/' \
+			if ! GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null git \
 				-C "$sp" fetch --tags origin; then
 				die "cannot fetch ${REPO_URL}; refusing to apply stale chezmoi source"
 			fi

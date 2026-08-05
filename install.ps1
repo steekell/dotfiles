@@ -3,7 +3,7 @@
 #
 # Idempotent. Override: $env:DOTFILES_REPO, $env:DOTFILES_REF, $env:CHEZMOI_BIN_DIR
 #
-#   irm https://raw.githubusercontent.com/steekell/dotfiles/v0.1.25/install.ps1 | iex
+#   irm https://raw.githubusercontent.com/steekell/dotfiles/v0.1.26/install.ps1 | iex
 #   $env:DOTFILES_REF = 'main'; irm .../install.ps1 | iex
 
 Set-StrictMode -Version Latest
@@ -11,7 +11,7 @@ $ErrorActionPreference = 'Stop'
 
 $RepoUrl = if ($env:DOTFILES_REPO) { $env:DOTFILES_REPO } else { 'https://github.com/steekell/dotfiles.git' }
 # Pin to this release by default (override: $env:DOTFILES_REF = 'main').
-$DefaultRef = 'v0.1.25'
+$DefaultRef = 'v0.1.26'
 $Ref = if ($env:DOTFILES_REF) { $env:DOTFILES_REF } else { $DefaultRef }
 $BinDir = if ($env:CHEZMOI_BIN_DIR) { $env:CHEZMOI_BIN_DIR } else {
     Join-Path $env:USERPROFILE 'bin'
