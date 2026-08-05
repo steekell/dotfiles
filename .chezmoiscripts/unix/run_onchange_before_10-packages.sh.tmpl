@@ -384,8 +384,7 @@ ensure_aur_cmd() {
 
 	if [ "$PACKAGE_MANAGER" = "pacman" ]; then
 		if ensure_yay; then
-			info "installing ${pkg} via yay (4 parallel build jobs)"
-			MAKEFLAGS="-j4" yay -S --needed --noconfirm "$pkg" || {
+			yay -S --needed --noconfirm "$pkg" || {
 				warn "failed to install ${cmd} via yay (non-fatal)"
 				return 1
 			}
@@ -431,7 +430,6 @@ ensure_cmd bash bash bash || true
 ensure_cmd zsh zsh zsh || true
 ensure_cmd nushell nu nushell nushell || true
 ensure_cmd zellij zellij zellij || true
-ensure_aur_cmd herdr herdr herdr || true
 ensure_cmd eza eza eza || true
 ensure_cmd zoxide zoxide zoxide || true
 # Debian/Ubuntu often ship `batcat` instead of `bat`.
