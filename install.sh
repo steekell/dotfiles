@@ -4,13 +4,13 @@
 #
 # Idempotent. Override: DOTFILES_REPO, DOTFILES_REF, CHEZMOI_BIN_DIR
 #
-#   curl -fsSL https://raw.githubusercontent.com/steekell/dotfiles/v0.1.23/install.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/steekell/dotfiles/v0.1.24/install.sh | sh
 #   DOTFILES_REF=main curl -fsSL .../install.sh | sh
 set -eu
 
 REPO_URL="${DOTFILES_REPO:-https://github.com/steekell/dotfiles.git}"
 # Pin to this release by default (override: DOTFILES_REF=main).
-DEFAULT_REF="v0.1.23"
+DEFAULT_REF="v0.1.24"
 REF="${DOTFILES_REF:-$DEFAULT_REF}"
 BIN_DIR="${CHEZMOI_BIN_DIR:-$HOME/.local/bin}"
 export PATH="${BIN_DIR}:${PATH}"
@@ -77,17 +77,27 @@ init_or_update() {
 	if [ -d "${sp}/.git" ]; then
 		info "existing chezmoi source at ${sp} — updating (ref=${REF})..."
 		if command -v git >/dev/null 2>&1; then
-			git -C "$sp" remote get-url origin >/dev/null 2>&1 || \
-				git -C "$sp" remote add origin "$REPO_URL" 2>/dev/null || true
-			git -C "$sp" fetch --tags origin 2>/dev/null || git -C "$sp" fetch origin || true
-			if git -C "$sp" rev-parse --verify "refs/tags/${REF}" >/dev/null 2>&1; then
-				git -C "$sp" checkout -q "tags/${REF}" || true
-			elif git -C "$sp" rev-parse --verify "refs/remotes/origin/${REF}" >/dev/null 2>&1; then
-				git -C "$sp" checkout -q -B "$REF" "origin/${REF}" || true
-			elif git -C "$sp" rev-parse --verify "refs/heads/${REF}" >/dev/null 2>&1; then
-				git -C "$sp" checkout -q "$REF" || true
+			if git -C "$sp" remote get-url origin >/dev/null 2>&1; then
+				git -C "$sp" remote set-url origin "$REPO_URL" ||
+					die "cannot configure origin remote in ${sp}"
 			else
-				info "warning: ref '${REF}' not found locally after fetch; applying current source"
+				git -C "$sp" remote add origin "$REPO_URL" ||
+					die "cannot add origin remote in ${sp}"
+			fi
+			if ! git -C "$sp" fetch --tags origin; then
+				die "cannot fetch ${REPO_URL}; refusing to apply stale chezmoi source"
+			fi
+			if git -C "$sp" rev-parse --verify "refs/tags/${REF}" >/dev/null 2>&1; then
+				git -C "$sp" checkout -q "tags/${REF}" ||
+					die "cannot checkout tag ${REF}"
+			elif git -C "$sp" rev-parse --verify "refs/remotes/origin/${REF}" >/dev/null 2>&1; then
+				git -C "$sp" checkout -q -B "$REF" "origin/${REF}" ||
+					die "cannot checkout branch ${REF}"
+			elif git -C "$sp" rev-parse --verify "refs/heads/${REF}" >/dev/null 2>&1; then
+				git -C "$sp" checkout -q "$REF" ||
+					die "cannot checkout local ref ${REF}"
+			else
+				die "ref '${REF}' not found in ${REPO_URL}"
 			fi
 		fi
 		chezmoi apply --keep-going
