@@ -64,9 +64,26 @@ run_root() {
 		return 1
 	fi
 }
+prepare_root() {
+	[ "$(id -u)" -eq 0 ] && return 0
+	case "$PACKAGE_MANAGER" in
+		brew|unknown) return 0 ;;
+		*)
+			if command -v sudo >/dev/null 2>&1; then
+				info "requesting administrator access once for package installation"
+				sudo -v
+			else
+				warn "sudo is unavailable; privileged package installs may fail"
+				return 1
+			fi
+		;;
+	esac
+}
+
 
 PACKAGE_MANAGER="$(detect_package_manager)"
 info "os=${os} distro=${distro:-?} like=${distro_like:-?} pm=${PACKAGE_MANAGER}"
+prepare_root || true
 
 mkdir -p "$state_dir"
 if [ ! -f "$manifest" ]; then
@@ -127,9 +144,9 @@ pm_install() {
 			record_pkg "dnf:${suffix}:${pkg}"
 			;;
 		pacman)
-			run_root pacman -Syu --needed --noconfirm "$pkg" || {
+			run_root pacman -S --needed --noconfirm "$pkg" || {
 				for alt in "$@"; do
-					run_root pacman -Syu --needed --noconfirm "$alt" && record_pkg "pacman:${suffix}:${alt}" && return 0
+					run_root pacman -S --needed --noconfirm "$alt" && record_pkg "pacman:${suffix}:${alt}" && return 0
 				done
 				return 1
 			}
@@ -213,7 +230,7 @@ flush_packages() {
 		brew) brew install $PACKAGE_QUEUE ;;
 		apt) ensure_apt_updated && run_root apt-get install -y $PACKAGE_QUEUE ;;
 		dnf) run_root dnf install -y $PACKAGE_QUEUE ;;
-		pacman) run_root pacman -Syu --needed --noconfirm $PACKAGE_QUEUE ;;
+		pacman) run_root pacman -S --needed --noconfirm $PACKAGE_QUEUE ;;
 		zypper) run_root zypper --non-interactive install $PACKAGE_QUEUE ;;
 		apk) run_root apk add --no-cache $PACKAGE_QUEUE ;;
 		pkg) run_root pkg install -y $PACKAGE_QUEUE ;;
@@ -336,7 +353,7 @@ ensure_yay() {
 	fi
 
 	info "yay not found — bootstrapping AUR helper (yay-bin)..."
-	run_root pacman -Syu --needed --noconfirm base-devel git || {
+	run_root pacman -S --needed --noconfirm base-devel git || {
 		warn "failed to install base-devel/git for yay bootstrap (non-fatal)"
 		return 1
 	}
@@ -367,7 +384,8 @@ ensure_aur_cmd() {
 
 	if [ "$PACKAGE_MANAGER" = "pacman" ]; then
 		if ensure_yay; then
-			yay -S --needed --noconfirm "$pkg" || {
+			info "installing ${pkg} via yay (4 parallel build jobs)"
+			MAKEFLAGS="-j4" yay -S --needed --noconfirm "$pkg" || {
 				warn "failed to install ${cmd} via yay (non-fatal)"
 				return 1
 			}
