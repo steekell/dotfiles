@@ -4,13 +4,13 @@
 #
 # Idempotent. Override: DOTFILES_REPO, DOTFILES_REF, CHEZMOI_BIN_DIR
 #
-#   curl -fsSL https://raw.githubusercontent.com/steekell/dotfiles/v0.1.28/install.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/steekell/dotfiles/v0.1.29/install.sh | sh
 #   DOTFILES_REF=main curl -fsSL .../install.sh | sh
 set -eu
 
 REPO_URL="${DOTFILES_REPO:-https://github.com/steekell/dotfiles.git}"
 # Pin to this release by default (override: DOTFILES_REF=main).
-DEFAULT_REF="v0.1.28"
+DEFAULT_REF="v0.1.29"
 REF="${DOTFILES_REF:-$DEFAULT_REF}"
 BIN_DIR="${CHEZMOI_BIN_DIR:-$HOME/.local/bin}"
 export PATH="${BIN_DIR}:${PATH}"
@@ -88,8 +88,19 @@ init_or_update() {
 				git -C "$sp" remote add origin "$REPO_URL" ||
 					die "cannot add origin remote in ${sp}"
 			fi
-			if ! GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null git \
-				-C "$sp" fetch --tags origin; then
+			fetch_git() {
+				case "$REF" in
+					v*)
+						git -C "$sp" fetch origin \
+							"+refs/tags/${REF}:refs/tags/${REF}"
+						;;
+					*)
+						git -C "$sp" fetch origin \
+							"+refs/heads/${REF}:refs/remotes/origin/${REF}"
+						;;
+				esac
+			}
+			if ! GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null fetch_git; then
 				die "cannot fetch ${REPO_URL}; refusing to apply stale chezmoi source"
 			fi
 			if git -C "$sp" rev-parse --verify "refs/tags/${REF}" >/dev/null 2>&1; then
