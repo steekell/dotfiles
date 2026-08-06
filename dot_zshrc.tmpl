@@ -586,7 +586,12 @@ if command -v fzf >/dev/null 2>&1 && [[ -d "$HOME/workspace/scripts" ]]; then
     )
     [[ -z $file ]] && { zle redisplay; return; }
     case "$file" in
-      *.py) cmd="python" ;;
+      *.py)
+        case "$(uname -s 2>/dev/null)" in
+          Darwin) cmd="python3" ;;
+          *)      cmd="python" ;;
+        esac
+        ;;
       *.sh|*.bash) cmd="bash" ;;
       *) cmd="script" ;;
     esac

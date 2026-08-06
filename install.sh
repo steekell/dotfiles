@@ -4,13 +4,13 @@
 #
 # Idempotent. Override: DOTFILES_REPO, DOTFILES_REF, CHEZMOI_BIN_DIR
 #
-#   curl -fsSL https://raw.githubusercontent.com/steekell/dotfiles/v0.2.2/install.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/steekell/dotfiles/v0.2.3/install.sh | sh
 #   DOTFILES_REF=main curl -fsSL .../install.sh | sh
 set -eu
 
 REPO_URL="${DOTFILES_REPO:-https://github.com/steekell/dotfiles.git}"
 # Pin to this release by default (override: DOTFILES_REF=main).
-DEFAULT_REF="v0.2.2"
+DEFAULT_REF="v0.2.3"
 REF="${DOTFILES_REF:-$DEFAULT_REF}"
 BIN_DIR="${CHEZMOI_BIN_DIR:-$HOME/.local/bin}"
 export PATH="${BIN_DIR}:${PATH}"
