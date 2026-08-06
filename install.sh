@@ -4,13 +4,13 @@
 #
 # Idempotent. Override: DOTFILES_REPO, DOTFILES_REF, CHEZMOI_BIN_DIR
 #
-#   curl -fsSL https://raw.githubusercontent.com/steekell/dotfiles/v0.1.27/install.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/steekell/dotfiles/v0.1.28/install.sh | sh
 #   DOTFILES_REF=main curl -fsSL .../install.sh | sh
 set -eu
 
 REPO_URL="${DOTFILES_REPO:-https://github.com/steekell/dotfiles.git}"
 # Pin to this release by default (override: DOTFILES_REF=main).
-DEFAULT_REF="v0.1.27"
+DEFAULT_REF="v0.1.28"
 REF="${DOTFILES_REF:-$DEFAULT_REF}"
 BIN_DIR="${CHEZMOI_BIN_DIR:-$HOME/.local/bin}"
 export PATH="${BIN_DIR}:${PATH}"
@@ -76,6 +76,10 @@ init_or_update() {
 
 	if [ -d "${sp}/.git" ]; then
 		info "existing chezmoi source at ${sp} — updating (ref=${REF})..."
+		backup_path="${sp}.bak.$(date -u +%Y%m%dT%H%M%SZ 2>/dev/null || date +%Y%m%d%H%M%S).$$"
+		info "backing up chezmoi source to ${backup_path}"
+		cp -a "$sp" "$backup_path" ||
+			die "cannot back up chezmoi source before fetch"
 		if command -v git >/dev/null 2>&1; then
 			if git -C "$sp" remote get-url origin >/dev/null 2>&1; then
 				git -C "$sp" remote set-url origin "$REPO_URL" ||
@@ -116,6 +120,8 @@ main() {
 	info "dotfiles install — start chezmoi only (repo=${REPO_URL} ref=${REF})"
 	install_chezmoi
 	init_or_update
+	chezmoi init
+	info "chezmoi configuration regenerated"
 	info "done. machine config was applied by chezmoi scripts (if any)."
 	info "new shell: exec \"\$SHELL\" -l"
 }
