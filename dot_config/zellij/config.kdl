@@ -5,7 +5,8 @@ keybinds {
         // bind "Alt c" { Copy; }
     }
     locked {
-        bind "Ctrl g" { SwitchToMode "Normal"; }
+        bind "Ctrl e" { SwitchToMode "Normal"; }
+        unbind "Ctrl g"
     }
     resize {
         bind "Ctrl n" { SwitchToMode "Normal"; }
@@ -182,7 +183,7 @@ keybinds {
         bind "x" { CloseFocus; SwitchToMode "Normal"; }
     }
     shared_except "locked" {
-        bind "Ctrl g" { SwitchToMode "Locked"; }
+        bind "Ctrl e" { SwitchToMode "Locked"; }
         bind "Ctrl q" { Quit; }
         bind "Alt f" { ToggleFloatingPanes; }
         bind "Alt n" { NewPane; }
@@ -200,6 +201,7 @@ keybinds {
         bind "Alt Shift p" { ToggleGroupMarking; }
         // Désactiver le préfixe Ctrl b fourni par les raccourcis par défaut.
         unbind "Ctrl b"
+        unbind "Ctrl g"
     }
     shared_except "normal" "locked" {
         bind "Enter" "Esc" { SwitchToMode "Normal"; }
