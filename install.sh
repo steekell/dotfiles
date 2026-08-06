@@ -4,13 +4,13 @@
 #
 # Idempotent. Override: DOTFILES_REPO, DOTFILES_REF, CHEZMOI_BIN_DIR
 #
-#   curl -fsSL https://raw.githubusercontent.com/steekell/dotfiles/v0.1.29/install.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/steekell/dotfiles/v0.1.30/install.sh | sh
 #   DOTFILES_REF=main curl -fsSL .../install.sh | sh
 set -eu
 
 REPO_URL="${DOTFILES_REPO:-https://github.com/steekell/dotfiles.git}"
 # Pin to this release by default (override: DOTFILES_REF=main).
-DEFAULT_REF="v0.1.29"
+DEFAULT_REF="v0.1.30"
 REF="${DOTFILES_REF:-$DEFAULT_REF}"
 BIN_DIR="${CHEZMOI_BIN_DIR:-$HOME/.local/bin}"
 export PATH="${BIN_DIR}:${PATH}"
@@ -104,13 +104,13 @@ init_or_update() {
 				die "cannot fetch ${REPO_URL}; refusing to apply stale chezmoi source"
 			fi
 			if git -C "$sp" rev-parse --verify "refs/tags/${REF}" >/dev/null 2>&1; then
-				git -C "$sp" checkout -q "tags/${REF}" ||
+				git -C "$sp" checkout -q -f "tags/${REF}" ||
 					die "cannot checkout tag ${REF}"
 			elif git -C "$sp" rev-parse --verify "refs/remotes/origin/${REF}" >/dev/null 2>&1; then
-				git -C "$sp" checkout -q -B "$REF" "origin/${REF}" ||
+				git -C "$sp" checkout -q -f -B "$REF" "origin/${REF}" ||
 					die "cannot checkout branch ${REF}"
 			elif git -C "$sp" rev-parse --verify "refs/heads/${REF}" >/dev/null 2>&1; then
-				git -C "$sp" checkout -q "$REF" ||
+				git -C "$sp" checkout -q -f "$REF" ||
 					die "cannot checkout local ref ${REF}"
 			else
 				die "ref '${REF}' not found in ${REPO_URL}"
