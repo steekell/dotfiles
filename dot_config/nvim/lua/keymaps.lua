@@ -126,8 +126,6 @@ map("n", "<leader>2",           "<cmd>w<cr><esc>",    { desc = "Save File" })
 map("n", "<leader>3",           "<cmd>wq<cr>",        { desc = "Quit with saving" })
 map("n", "<leader>4",           "<cmd>q!<cr>",        { desc = "Quit without saving" })
 
-map({ "n", "i", "v" }, "<C-w>", "<cmd>w<cr>",  { desc = "Save File" })
-map({ "n", "i", "v" }, "<C-q>", "<cmd>q<cr>",  { desc = "Quit" })
 
 -------------------------------------------------------------------------------
 -- Édition
