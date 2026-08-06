@@ -5,7 +5,7 @@ keybinds {
         // bind "Alt c" { Copy; }
     }
     locked {
-        bind "Ctrl e" { SwitchToMode "Normal"; }
+        bind "Ctrl Shift g" { SwitchToMode "Normal"; }
         unbind "Ctrl g"
     }
     resize {
@@ -183,7 +183,7 @@ keybinds {
         bind "x" { CloseFocus; SwitchToMode "Normal"; }
     }
     shared_except "locked" {
-        bind "Ctrl e" { SwitchToMode "Locked"; }
+        bind "Ctrl Shift g" { SwitchToMode "Locked"; }
         bind "Ctrl q" { Quit; }
         bind "Alt f" { ToggleFloatingPanes; }
         bind "Alt n" { NewPane; }
